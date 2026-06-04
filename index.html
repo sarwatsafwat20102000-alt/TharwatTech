@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تتبع اليد بمؤثرات النيون التفاعلية</title>
+    <title>هولوغرام النيون التفاعلي المتكامل</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
@@ -12,85 +12,57 @@
 
     <style>
         body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #000;
-            font-family: sans-serif;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; background-color: #030305; font-family: sans-serif;
         }
 
-        /* حاوية عناصر الفيديو والجرافيك */
-        #container {
-            position: relative;
-            width: 100%;
-            height: 100%;
-        }
+        #container { position: relative; width: 100%; height: 100%; }
 
-        /* فيديو الكاميرا يعمل في الخلفية لمعالجة الصور */
+        /* كاميرا المراقبة الصغيرة في الزاوية للتأكد من التشغيل */
         #webcam {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transform: scaleX(-1); /* وضع المرآة لتسهيل التحكم */
-            visibility: hidden;
-            pointer-events: none;
+            position: absolute; bottom: 15px; right: 15px;
+            width: 100px; height: 133px; object-fit: cover;
+            transform: scaleX(-1); border-radius: 12px;
+            border: 2px solid #00f3ff; z-index: 50;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.5); background: #000;
         }
 
-        /* لوحة الرسم (Canvas) الخاصة بمؤثرات النيون */
-        #visuals {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 10;
-        }
+        #visuals { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; }
 
-        /* واجهة تحكم وتنبيهات بسيطة */
+        /* شاشة البدء وتخطي حظر المتصفح */
         #loading-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(10, 10, 15, 0.9);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: #00f3ff;
-            z-index: 100;
-            transition: opacity 0.5s ease;
-            text-shadow: 0 0 10px #00f3ff;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #05050a; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; color: #00f3ff;
+            z-index: 100; text-shadow: 0 0 10px #00f3ff; padding: 20px; text-align: center;
         }
 
         .spinner {
-            border: 4px solid rgba(0, 243, 255, 0.1);
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            border-left-color: #00f3ff;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-            box-shadow: 0 0 15px #00f3ff;
+            border: 4px solid rgba(0, 243, 255, 0.1); width: 45px; height: 45px;
+            border-radius: 50%; border-left-color: #00f3ff;
+            animation: spin 1s linear infinite; margin-bottom: 20px;
         }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        #start-btn {
+            display: none; background: transparent; color: #00f3ff;
+            border: 2px solid #00f3ff; padding: 14px 35px; font-size: 18px;
+            font-weight: bold; border-radius: 25px; cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.3); transition: all 0.3s;
         }
+
+        #start-btn:active { transform: scale(0.95); background: #00f3ff; color: #000; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
     <div id="container">
         <div id="loading-overlay">
-            <div class="spinner"></div>
-            <h2>جاري تشغيل الكاميرا وتحميل الذكاء الاصطناعي...</h2>
-            <p>يرجى السماح بالوصول للكاميرا عند طلبها</p>
+            <div id="status-container">
+                <div class="spinner"></div>
+                <h3 id="loading-text">جاري تحضير قوة الهولوغرام السحرية...</h3>
+            </div>
+            <button id="start-btn">تفعيل مظهر السوبر باور ⚡</button>
         </div>
 
         <video id="webcam" autoplay playsinline muted></video>
@@ -101,156 +73,159 @@
         const videoElement = document.getElementById('webcam');
         const canvasElement = document.getElementById('visuals');
         const loadingOverlay = document.getElementById('loading-overlay');
+        const startBtn = document.getElementById('start-btn');
+        const loadingText = document.getElementById('loading-text');
+        const spinner = document.querySelector('.spinner');
 
-        // --- إعداد بيئة Three.js لمؤثرات النيون ---
+        // --- إعداد مشهد الـ Three.js ثلاثي الأبعاد المتطور ---
         const scene = new THREE.Scene();
         const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
         const renderer = new THREE.WebGLRenderer({ canvas: canvasElement, antialias: true, alpha: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
 
-        // إنشاء جزيئات النيون (Particles)
-        const particleCount = 150;
-        const geometry = new THREE.BufferGeometry();
-        const positions = new Float32Array(particleCount * 3);
-        const colors = new Float32Array(particleCount * 3);
+        // 1. صنع نقاط مضيئة متوهجة لكل مفصل من مفاصل اليد (21 مفصل)
+        const jointCount = 21;
+        const dotGeometry = new THREE.BufferGeometry();
+        const dotPositions = new Float32Array(jointCount * 3);
+        const dotColors = new Float32Array(jointCount * 3);
 
-        for(let i=0; i<particleCount; i++) {
-            positions[i*3] = positions[i*3+1] = positions[i*3+2] = 9999; 
-            colors[i*3] = 0.0;     
-            colors[i*3+1] = 0.95;  
-            colors[i*3+2] = 1.0;   
+        // وضع مفاصل افتراضية خارج الشاشة في البداية
+        for(let i=0; i<jointCount; i++) {
+            dotPositions[i*3] = dotPositions[i*3+1] = dotPositions[i*3+2] = 9999;
+            dotColors[i*3] = 0.0; dotColors[i*3+1] = 0.95; dotColors[i*3+2] = 1.0; // نيون سيان
         }
+        dotGeometry.setAttribute('position', new THREE.BufferAttribute(dotPositions, 3));
+        dotGeometry.setAttribute('color', new THREE.BufferAttribute(dotColors, 3));
 
-        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+        const dotMaterial = new THREE.PointsMaterial({
+            size: 0.05, vertexColors: true, transparent: true, opacity: 1.0,
+            blending: THREE.AdditiveBlending, depthWrite: false
+        });
+        const jointPoints = new THREE.Points(dotGeometry, dotMaterial);
+        scene.add(jointPoints);
 
-        const pMaterial = new THREE.PointsMaterial({
-            size: 0.08,
-            vertexColors: true,
-            transparent: true,
-            opacity: 0.85,
-            blending: THREE.AdditiveBlending, 
-            depthWrite: false
+        // 2. صنع الخطوط النيون المتصلة (الهيكل العظمي للهولوغرام)
+        // روابط المفاصل في معيار MediaPipe لرسم خطوط اليد بالكامل
+        const CONNECTIONS = [
+            [0,1], [1,2], [2,3], [3,4],       // الإبهام
+            [0,5], [5,6], [6,7], [7,8],       // السبابة
+            [5,9], [9,10], [10,11], [11,12],  // الوسطى
+            [9,13], [13,14], [14,15], [15,16], // البنصر
+            [0,17], [17,18], [18,19], [19,20], // الخنصر
+            [5,17] // أسفل الكف
+        ];
+
+        const lineMaterials = [];
+        const lineGeometries = [];
+        const lines = [];
+
+        // إنشاء مجسمات الخطوط النيون المتوهجة واضافتها للمشهد
+        CONNECTIONS.forEach(() => {
+            const geom = new THREE.BufferGeometry();
+            const pos = new Float32Array(2 * 3); // نقطتين لكل خط
+            geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            
+            // مادة الخط بلون نيون فوسفوري متوهج
+            const mat = new THREE.LineBasicMaterial({
+                color: 0x00f3ff, transparent: true, opacity: 0.7,
+                blending: THREE.AdditiveBlending, linewidth: 3 // ملاحظة: المتصفحات تدعم سمك 1 غالباً لذا نعتمد على التوهج
+            });
+            
+            const line = new THREE.Line(geom, mat);
+            scene.add(line);
+            lines.push(line);
+            lineGeometries.push(geom);
         });
 
-        const particleSystem = new THREE.Points(geometry, pMaterial);
-        scene.add(particleSystem);
 
-        let trail = [];
-        const maxTrailLength = 80;
-
-        // --- معالجة نتائج تتبع اليد من MediaPipe ---
+        // --- معالجة حركة اليد وبناء تأثير الهولوغرام الفوري ---
         function onResults(results) {
-            if (loadingOverlay.style.opacity !== '0') {
-                loadingOverlay.style.opacity = '0';
-                setTimeout(() => loadingOverlay.style.display = 'none', 500);
-            }
-
-            const posAttribute = geometry.attributes.position;
-            const colAttribute = geometry.attributes.color;
-            let particleIndex = 0;
+            const dotPosAttr = dotGeometry.attributes.position;
 
             if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                for (const landmarks of results.multiHandLandmarks) {
-                    const fingertips = [4, 8, 12, 16, 20];
-                    fingertips.forEach((index, i) => {
-                        const pt = landmarks[index];
-                        const x = -(pt.x * 2 - 1); 
-                        const y = -(pt.y * 2 - 1);
-                        trail.push({ x, y, age: 0, hColor: i });
-                    });
+                const landmarks = results.multiHandLandmarks[0]; // التركيز على اليد الأولى
+
+                // تحديث أماكن النقاط المضيئة (المفاصل)
+                for (let i = 0; i < jointCount; i++) {
+                    const pt = landmarks[i];
+                    const x = -(pt.x * 2 - 1);
+                    const y = -(pt.y * 2 - 1);
+
+                    dotPosAttr.array[i*3] = x;
+                    dotPosAttr.array[i*3+1] = y;
+                    dotPosAttr.array[i*3+2] = 0;
                 }
+                dotPosAttr.needsUpdate = true;
+
+                // تحديث الخطوط النيون لتصل بين المفاصل بدقة
+                CONNECTIONS.forEach((conn, index) => {
+                    const pt1 = landmarks[conn[0]];
+                    const pt2 = landmarks[conn[1]];
+
+                    const x1 = -(pt1.x * 2 - 1); const y1 = -(pt1.y * 2 - 1);
+                    const x2 = -(pt2.x * 2 - 1); const y2 = -(pt2.y * 2 - 1);
+
+                    const linePosAttr = lineGeometries[index].attributes.position;
+                    linePosAttr.array[0] = x1; linePosAttr.array[1] = y1; linePosAttr.array[2] = 0;
+                    linePosAttr.array[3] = x2; linePosAttr.array[4] = y2; linePosAttr.array[5] = 0;
+                    linePosAttr.needsUpdate = true;
+                    lines[index].visible = true;
+                });
+
+            } else {
+                // إخفاء كل شيء إذا اختفت اليد من الكاميرا
+                for (let i = 0; i < jointCount; i++) {
+                    dotPosAttr.array[i*3] = 9999;
+                }
+                dotPosAttr.needsUpdate = true;
+                lines.forEach(l => l.visible = false);
             }
 
-            for (let i = trail.length - 1; i >= 0; i--) {
-                trail[i].age += 1;
-                if (trail[i].age > maxTrailLength) {
-                    trail.splice(i, 1);
-                    continue;
-                }
-
-                if (particleIndex < particleCount) {
-                    const t = trail[i];
-                    const idx = particleIndex * 3;
-                    
-                    posAttribute.array[idx] = t.x + (Math.random() - 0.5) * 0.015; 
-                    posAttribute.array[idx+1] = t.y + (Math.random() - 0.5) * 0.015;
-                    posAttribute.array[idx+2] = 0;
-
-                    const lifeRatio = 1.0 - (t.age / maxTrailLength);
-                    
-                    if(t.hColor === 1) { // السبابة - نيون فوشيا
-                        colAttribute.array[idx] = 1.0 * lifeRatio;
-                        colAttribute.array[idx+1] = 0.0 * lifeRatio;
-                        colAttribute.array[idx+2] = 0.6 * lifeRatio;
-                    } else { // باقي الأصابع - نيون سيان
-                        colAttribute.array[idx] = 0.0 * lifeRatio;
-                        colAttribute.array[idx+1] = 0.9 * lifeRatio;
-                        colAttribute.array[idx+2] = 1.0 * lifeRatio;
-                    }
-                    particleIndex++;
-                }
-            }
-
-            for (let i = particleIndex; i < particleCount; i++) {
-                posAttribute.array[i*3] = 9999;
-                posAttribute.array[i*3+1] = 9999;
-            }
-
-            posAttribute.needsUpdate = true;
-            colAttribute.needsUpdate = true;
             renderer.render(scene, camera);
         }
 
-        // --- إعداد مكتبة MediaPipe Hands ---
+        // --- إعداد مكتبة تتبع اليد ---
         const hands = new Hands({
             locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
         });
 
         hands.setOptions({
-            maxNumHands: 2,
-            modelComplexity: 1,
-            minDetectionConfidence: 0.5,
-            minTrackingConfidence: 0.5
+            maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.6, minTrackingConfidence: 0.6
         });
-
         hands.onResults(onResults);
 
-        // --- تشغيل متوافق ومرن للكاميرا ---
-        const cameraUtils = new Camera(videoElement, {
-            onFrame: async () => {
-                await hands.send({ image: videoElement });
-            },
-            facingMode: "user",
-            width: { ideal: 640 },
-            height: { ideal: 480 }
+        // تفعيل زر البدء عند اكتمال التحميل
+        hands.initialize().then(() => {
+            spinner.style.display = 'none';
+            loadingText.innerText = "طاقة النيون جاهزة للانطلاق!";
+            startBtn.style.display = 'block';
         });
-        
-        // تشغيل الكاميرا الأساسي، وفي حال الرفض أو عدم التوافق يتم الانتقال للحل البديل تلقائياً
-        cameraUtils.start().catch(err => {
-            console.log("الانتقال إلى نظام الكاميرا الاحتياطي المرن...");
+
+        // تشغيل الكاميرا عند ضغط زر "تفعيل مظهر السوبر باور"
+        startBtn.addEventListener('click', () => {
+            loadingOverlay.style.opacity = '0';
+            setTimeout(() => loadingOverlay.style.display = 'none', 500);
+
             navigator.mediaDevices.getUserMedia({ 
-                video: { 
-                    facingMode: "user",
-                    width: { ideal: 640 },
-                    height: { ideal: 480 }
-                }, 
+                video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }, 
                 audio: false 
             })
             .then((stream) => {
                 videoElement.srcObject = stream;
-                const startTracking = async () => {
-                    if(!videoElement.paused && !videoElement.ended) {
-                        await hands.send({ image: videoElement });
+                
+                const processVideo = async () => {
+                    if (!videoElement.paused && !videoElement.ended) {
+                        try { await hands.send({ image: videoElement }); } catch (e) {}
                     }
-                    requestAnimationFrame(startTracking);
+                    requestAnimationFrame(processVideo);
                 };
+
                 videoElement.onloadedmetadata = () => {
-                    startTracking();
+                    videoElement.play().then(() => { processVideo(); });
                 };
             })
             .catch(error => {
-                alert("تعذر تشغيل الكاميرا، يرجى التأكد من إعطاء الصلاحية للمتصفح: " + error.message);
+                alert("برجاء السماح بصلاحية الكاميرا لإظهار السوبر باور: " + error.message);
             });
         });
 
@@ -260,3 +235,4 @@
     </script>
 </body>
 </html>
+
