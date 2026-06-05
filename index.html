@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>بوابة النيون الديناميكية الذكية ⚡</title>
+    <title>واجهة النيون الهولوغرامية المتكاملة ⚡</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
@@ -16,22 +16,19 @@
 
         #container { position: relative; width: 100%; height: 100%; }
 
-        /* الكاميرا تغطي الشاشة بالكامل كخلفية حية */
         #webcam {
             position: absolute; top: 0; left: 0;
             width: 100%; height: 100%; object-fit: cover;
-            transform: scaleX(-1); /* وضع المرآة ليتطابق الاتجاه مع حركتك */
+            transform: scaleX(-1);
             z-index: 5;
         }
 
-        /* شاشة الرسم ثنائية الأبعاد السريعة فوق الكاميرا */
         #visuals {
             position: absolute; top: 0; left: 0;
             width: 100%; height: 100%; z-index: 10;
             pointer-events: none;
         }
 
-        /* واجهة التحميل والبدء لتفادي قيود المتصفح */
         #loading-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: #040408; display: flex; flex-direction: column;
@@ -62,9 +59,9 @@
         <div id="loading-overlay">
             <div id="status-container">
                 <div class="spinner"></div>
-                <h3 id="loading-text">جاري دمج تتبع اليدين بالذكاء الاصطناعي الديناميكي...</h3>
+                <h3 id="loading-text">جاري بناء الخوارزمية الهولوغرامية وشحن النيون...</h3>
             </div>
-            <button id="start-btn">إطلاق البوابة الليزرية المتغيرة ⚡</button>
+            <button id="start-btn">إطلاق الواجهة الليزرية بالكامل ⚡</button>
         </div>
 
         <video id="webcam" autoplay playsinline muted></video>
@@ -80,7 +77,6 @@
         const loadingText = document.getElementById('loading-text');
         const spinner = document.querySelector('.spinner');
 
-        // ضبط الأبعاد التلقائية لتطابق حجم شاشة الموبايل
         function resizeCanvas() {
             canvasElement.width = window.innerWidth;
             canvasElement.height = window.innerHeight;
@@ -88,7 +84,6 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        // الروابط البرمجية لهيكل مفاصل اليد الأساسية
         const CONNECTIONS = [
             [0,1], [1,2], [2,3], [3,4],       
             [0,5], [5,6], [6,7], [7,8],       
@@ -98,9 +93,178 @@
             [5,17] 
         ];
 
-        // مصفوفة تحتوي على أرقام أطراف الأصابع الخمسة فقط (4=الإبهام، 8=السبابة، 12=الوسطى، 16=البنصر، 20=الخنصر)
         const FINGER_TIPS = [4, 8, 12, 16, 20];
 
-        // دالة رياضية سريعة لحساب المسافة بين نقطتين في الفراغ
         function getDistance(p1, p2) {
-            return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y -
+            return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+        }
+
+        // دالة سحرية لرسم تأثير شبكة الهولوغرام بداخل المستطيل
+        function drawHologramGrid(p1, p2, p3, p4) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.lineTo(p3.x, p3.y);
+            ctx.lineTo(p4.x, p4.y);
+            ctx.closePath();
+            ctx.clip(); // حصر الرسم داخل حدود المستطيل فقط
+
+            // 1. ملء الخلفية بلون أزرق ليزري شفاف
+            ctx.fillStyle = 'rgba(0, 243, 255, 0.08)';
+            ctx.fill();
+
+            // 2. رسم خطوط الشبكة الرقمية المتقاطعة (Grid) كما في خيال الفيسبوك العلمية
+            ctx.strokeStyle = 'rgba(0, 243, 255, 0.15)';
+            ctx.lineWidth = 1;
+            ctx.shadowBlur = 0; // إلغاء التوهج للخطوط الداخلية للحفاظ على الأداء
+
+            const boundsMinX = Math.min(p1.x, p2.x, p3.x, p4.x);
+            const boundsMaxX = Math.max(p1.x, p2.x, p3.x, p4.x);
+            const boundsMinY = Math.min(p1.y, p2.y, p3.y, p4.y);
+            const boundsMaxY = Math.max(p1.y, p2.y, p3.y, p4.y);
+
+            const gridSpacing = 25; // المسافة بين مربعات الشبكة
+
+            for (let x = boundsMinX; x < boundsMaxX; x += gridSpacing) {
+                ctx.beginPath(); ctx.moveTo(x, boundsMinY); ctx.lineTo(x, boundsMaxY); ctx.stroke();
+            }
+            for (let y = boundsMinY; y < boundsMaxY; y += gridSpacing) {
+                ctx.beginPath(); ctx.moveTo(boundsMinX, y); ctx.lineTo(boundsMaxX, y); ctx.stroke();
+            }
+            ctx.restore();
+        }
+
+        function onResults(results) {
+            ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                let allHandsTips = [];
+
+                for (const landmarks of results.multiHandLandmarks) {
+                    // رسم خطوط اليد
+                    CONNECTIONS.forEach((conn) => {
+                        const pt1 = landmarks[conn[0]]; const pt2 = landmarks[conn[1]];
+                        ctx.beginPath();
+                        ctx.moveTo((1 - pt1.x) * canvasElement.width, pt1.y * canvasElement.height);
+                        ctx.lineTo((1 - pt2.x) * canvasElement.width, pt2.y * canvasElement.height);
+                        ctx.strokeStyle = '#00f3ff'; ctx.lineWidth = 2; ctx.shadowBlur = 10; ctx.shadowColor = '#00f3ff';
+                        ctx.stroke();
+                    });
+
+                    // رسم نقط المفاصل
+                    landmarks.forEach((pt) => {
+                        ctx.beginPath(); ctx.arc((1 - pt.x) * canvasElement.width, pt.y * canvasElement.height, 4, 0, 2 * Math.PI);
+                        ctx.fillStyle = '#ffffff'; ctx.shadowBlur = 6; ctx.shadowColor = '#00f3ff'; ctx.fill();
+                    });
+
+                    let tips = FINGER_TIPS.map(index => {
+                        return { id: index, x: (1 - landmarks[index].x) * canvasElement.width, y: landmarks[index].y * canvasElement.height };
+                    });
+                    allHandsTips.push(tips);
+                }
+
+                // هندسة تتبع أقرب الأصابع وبناء المستطيل المكتمل
+                if (allHandsTips.length === 2) {
+                    const hand1 = allHandsTips[0];
+                    const hand2 = allHandsTips[1];
+
+                    let closestPairs = [];
+                    for (let i = 0; i < hand1.length; i++) {
+                        for (let j = 0; j < hand2.length; j++) {
+                            closestPairs.push({ h1Tip: hand1[i], h2Tip: hand2[j], distance: getDistance(hand1[i], hand2[j]) });
+                        }
+                    }
+                    closestPairs.sort((a, b) => a.distance - b.distance);
+
+                    const pair1 = closestPairs[0];
+                    let pair2 = null;
+                    for (let k = 1; k < closestPairs.length; k++) {
+                        if (closestPairs[k].h1Tip.id !== pair1.h1Tip.id && closestPairs[k].h2Tip.id !== pair1.h2Tip.id) {
+                            pair2 = closestPairs[k];
+                            break;
+                        }
+                    }
+
+                    if (pair1 && pair2) {
+                        // الأركان الأربعة الخام من الأصابع المقتربة
+                        const ptA = pair1.h1Tip; // يد 1، إصبع 1
+                        const ptB = pair1.h2Tip; // يد 2، إصبع 1
+                        const ptC = pair2.h2Tip; // يد 2، إصبع 2
+                        const ptD = pair2.h1Tip; // يد 1، إصبع 2
+
+                        // 🔥 التعديل الهندسي الحاسم: ترتيب النقاط دائرياً لمنع تشابك خط الـ X
+                        // نقوم بترتيب النقاط بناءً على موقعها الأفقي لتشكيل إطار خارجي سليم ومغلق دائماً
+                        const points = [ptA, ptB, ptC, ptD];
+                        points.sort((a, b) => a.x - b.x); // ترتيب من اليسار لليمين
+
+                        let leftPoints = [points[0], points[1]];
+                        let rightPoints = [points[2], points[3]];
+
+                        // فرز علوي وسفلي لليسار واليمين
+                        leftPoints.sort((a, b) => a.y - b.y);
+                        rightPoints.sort((a, b) => a.y - b.y);
+
+                        const topLeft = leftPoints[0];
+                        const bottomLeft = leftPoints[1];
+                        const topRight = rightPoints[0];
+                        const bottomRight = rightPoints[1];
+
+                        // 1. رسم تأثيرات الواجهة الرقمية المحشوة بالداخل أولاً
+                        drawHologramGrid(topLeft, topRight, bottomRight, bottomLeft);
+
+                        // 2. رسم المستطيل الليزري الخارجي المشع المتوهج بدقة
+                        ctx.beginPath();
+                        ctx.moveTo(topLeft.x, topLeft.y);
+                        ctx.lineTo(topRight.x, topRight.y);
+                        ctx.lineTo(bottomRight.x, bottomRight.y);
+                        ctx.lineTo(bottomLeft.x, bottomLeft.y);
+                        ctx.closePath();
+
+                        ctx.strokeStyle = '#00f3ff';
+                        ctx.lineWidth = 4;
+                        ctx.shadowBlur = 20;
+                        ctx.shadowColor = '#00f3ff';
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        const hands = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+
+        hands.setOptions({
+            maxNumHands: 2, modelComplexity: 0, minDetectionConfidence: 0.45, minTrackingConfidence: 0.45
+        });
+        hands.onResults(onResults);
+
+        hands.initialize().then(() => {
+            spinner.style.display = 'none';
+            loadingText.innerText = "بوابة النيون المكتملة مستعدة تماماً!";
+            startBtn.style.display = 'block';
+        });
+
+        startBtn.addEventListener('click', () => {
+            loadingOverlay.style.opacity = '0';
+            setTimeout(() => loadingOverlay.style.display = 'none', 500);
+
+            navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "user", width: 320, height: 240 }, 
+                audio: false 
+            })
+            .then((stream) => {
+                videoElement.srcObject = stream;
+                const processVideo = async () => {
+                    if (!videoElement.paused && !videoElement.ended) {
+                        try { await hands.send({ image: videoElement }); } catch (e) {}
+                    }
+                    requestAnimationFrame(processVideo);
+                };
+                videoElement.onloadedmetadata = () => { videoElement.play().then(() => { processVideo(); }); };
+            });
+        });
+    </script>
+</body>
+</html>
