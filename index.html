@@ -3,12 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>بوابة النيون الهولوغرامية - السوبر باور الكامل</title>
+    <title>بوابة النيون - تتبع اليدين المتكامل</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <style>
         body, html {
@@ -18,26 +16,25 @@
 
         #container { position: relative; width: 100%; height: 100%; }
 
-        /* الكاميرا تغطي الشاشة بالكامل كخلفية حية */
+        /* الكاميرا تغطي الخلفية بالكامل */
         #webcam {
             position: absolute; top: 0; left: 0;
             width: 100%; height: 100%; object-fit: cover;
-            transform: scaleX(-1); /* تفعيل وضع المرآة لتطابق التتبع */
+            transform: scaleX(-1); /* وضع المرآة المطابق للحركة */
             z-index: 5;
         }
 
-        /* جرافيك الليزر فوق الكاميرا مباشرة مع فلاتر التوهج السينمائي */
+        /* شاشة الرسم السريعة والمحسنة فوق الكاميرا مباشرة */
         #visuals {
             position: absolute; top: 0; left: 0;
             width: 100%; height: 100%; z-index: 10;
             pointer-events: none;
-            filter: drop-shadow(0 0 10px rgba(0, 243, 255, 0.9)) drop-shadow(0 0 25px rgba(0, 243, 255, 0.4));
         }
 
-        /* واجهة البدء وتخطي قيود الحظر */
+        /* واجهة التحميل والبدء */
         #loading-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: #040408; display: flex; flex-direction: column;
+            background: #05050a; display: flex; flex-direction: column;
             justify-content: center; align-items: center; color: #00f3ff;
             z-index: 100; text-shadow: 0 0 10px #00f3ff; padding: 20px; text-align: center;
         }
@@ -65,9 +62,9 @@
         <div id="loading-overlay">
             <div id="status-container">
                 <div class="spinner"></div>
-                <h3 id="loading-text">جاري مزامنة تتبع اليدين وتجهيز بوابة الليزر...</h3>
+                <h3 id="loading-text">جاري إجبار النظام على تفعيل تتبع اليدين معاً...</h3>
             </div>
-            <button id="start-btn">إطلاق طاقة السوبر باور الثنائية ⚡</button>
+            <button id="start-btn">تفعيل السوبر باور الثنائي ⚡</button>
         </div>
 
         <video id="webcam" autoplay playsinline muted></video>
@@ -77,164 +74,121 @@
     <script>
         const videoElement = document.getElementById('webcam');
         const canvasElement = document.getElementById('visuals');
+        const ctx = canvasElement.getContext('2d');
         const loadingOverlay = document.getElementById('loading-overlay');
         const startBtn = document.getElementById('start-btn');
         const loadingText = document.getElementById('loading-text');
         const spinner = document.querySelector('.spinner');
 
-        // --- إعداد مشهد الـ Three.js المتوافق مع الشاشة ---
-        const scene = new THREE.Scene();
-        const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-        const renderer = new THREE.WebGLRenderer({ canvas: canvasElement, antialias: true, alpha: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-
-        // 1. نقاط المفاصل لـ يدين اثنتين (21 مفصل × 2 يد = 42 نقطة)
-        const maxHands = 2;
-        const totalJoints = 21 * maxHands;
-        const dotGeometry = new THREE.BufferGeometry();
-        const dotPositions = new Float32Array(totalJoints * 3);
-        
-        for(let i=0; i<totalJoints; i++) {
-            dotPositions[i*3] = dotPositions[i*3+1] = dotPositions[i*3+2] = 9999; // إخفاء خارج الشاشة
+        // ضبط أبعاد شاشة الرسم لتطابق أبعاد الشاشة الحقيقية
+        function resizeCanvas() {
+            canvasElement.width = window.innerWidth;
+            canvasElement.height = window.innerHeight;
         }
-        dotGeometry.setAttribute('position', new THREE.BufferAttribute(dotPositions, 3));
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
 
-        const dotMaterial = new THREE.PointsMaterial({
-            color: 0x00f3ff, size: 0.06, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending
-        });
-        const jointPoints = new THREE.Points(dotGeometry, dotMaterial);
-        scene.add(jointPoints);
-
-        // 2. هيكل الخطوط لليدين
-        const HAND_CONNECTIONS = [
-            [0,1], [1,2], [2,3], [3,4], [0,5], [5,6], [6,7], [7,8],
-            [5,9], [9,10], [10,11], [11,12], [9,13], [13,14], [14,15], [15,16],
-            [0,17], [17,18], [18,19], [19,20], [5,17]
+        // الروابط البرمجية لتوصيل مفاصل اليد (21 مفصل)
+        const CONNECTIONS = [
+            [0,1], [1,2], [2,3], [3,4],       
+            [0,5], [5,6], [6,7], [7,8],       
+            [5,9], [9,10], [10,11], [11,12],  
+            [9,13], [13,14], [14,15], [15,16], 
+            [0,17], [17,18], [18,19], [19,20], 
+            [5,17] 
         ];
 
-        const lineGeometries = [];
-        const lines = [];
-
-        // إنشاء خطوط الهيكل لليد الأولى والثانية
-        for(let h=0; h<maxHands; h++) {
-            HAND_CONNECTIONS.forEach(() => {
-                const geom = new THREE.BufferGeometry();
-                const pos = new Float32Array(2 * 3);
-                geom.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-                const mat = new THREE.LineBasicMaterial({
-                    color: 0x00f3ff, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending
-                });
-                const line = new THREE.Line(geom, mat);
-                scene.add(line);
-                lines.push(line);
-                lineGeometries.push(geom);
-            });
-        }
-
-        // 3. إنشاء "المستطيل الليزري المركزي الخارق" (بوابة النيون بين اليدين)
-        const portalGeometry = new THREE.BufferGeometry();
-        const portalPositions = new Float32Array(5 * 3); // 5 نقاط لإغلاق المستطيل بالكامل
-        portalGeometry.setAttribute('position', new THREE.BufferAttribute(portalPositions, 3));
-        
-        const portalMaterial = new THREE.LineBasicMaterial({
-            color: 0x00f3ff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, linewidth: 2
-        });
-        const portalLine = new THREE.Line(portalGeometry, portalMaterial);
-        portalLine.visible = false; // لا يظهر إلا عند رصد اليدين معاً
-        scene.add(portalLine);
-
-
-        // --- معالجة حركة اليدين وبناء البوابة ديناميكياً ---
+        // --- معالجة البيانات والرسم الفوري ثنائي الأبعاد عالي الأداء ---
         function onResults(results) {
-            const dotPosAttr = dotGeometry.attributes.position;
-            let lineIdx = 0;
-
-            // إخفاء كل مفاصل اليدين افتراضياً لتحديثها
-            for (let i = 0; i < totalJoints; i++) { dotPosAttr.array[i*3] = 9999; }
-            lines.forEach(l => l.visible = false);
-            portalLine.visible = false;
+            // مسح الشاشة في كل إطار استعداداً للرسم الجديد
+            ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
             if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
                 
-                // مصفوفة لتخزين نقاط التحكم الخاصة بالمستطيل المركزي
-                let handCenters = [];
+                let handPoints = []; // مصفوفة لحفظ نقاط أصابع اليدين
 
-                // المرور على كل يد تم رصدها (بحد أقصى يدين)
-                for (let h = 0; h < Math.min(results.multiHandLandmarks.length, maxHands); h++) {
-                    const landmarks = results.multiHandLandmarks[h];
-                    const offset = h * 21;
-
-                    // تحديث المفاصل الـ 21 الخاصة باليد الحالية
-                    for (let i = 0; i < 21; i++) {
-                        const pt = landmarks[i];
-                        const x = -(pt.x * 2 - 1);
-                        const y = -(pt.y * 2 - 1);
-
-                        dotPosAttr.array[(offset + i) * 3] = x;
-                        dotPosAttr.array[(offset + i) * 3 + 1] = y;
-                        dotPosAttr.array[(offset + i) * 3 + 2] = 0;
-                    }
-
-                    // تحديث خطوط الهيكل لليد الحالية
-                    HAND_CONNECTIONS.forEach((conn) => {
+                // تكرار الرسم لكل يد يتم رصدها (الآن سيرى اليدين معاً بنجاح)
+                for (const landmarks of results.multiHandLandmarks) {
+                    
+                    // 1. رسم خطوط الهيكل العظمي لكل يد بتوهج نيون
+                    CONNECTIONS.forEach((conn) => {
                         const pt1 = landmarks[conn[0]];
                         const pt2 = landmarks[conn[1]];
 
-                        const x1 = -(pt1.x * 2 - 1); const y1 = -(pt1.y * 2 - 1);
-                        const x2 = -(pt2.x * 2 - 1); const y2 = -(pt2.y * 2 - 1);
-
-                        const linePosAttr = lineGeometries[lineIdx].attributes.position;
-                        linePosAttr.array[0] = x1; linePosAttr.array[1] = y1; linePosAttr.array[2] = 0;
-                        linePosAttr.array[3] = x2; linePosAttr.array[4] = y2; linePosAttr.array[5] = 0;
-                        linePosAttr.needsUpdate = true;
-                        lines[lineIdx].visible = true;
-                        lineIdx++;
+                        ctx.beginPath();
+                        // تحويل الإحداثيات لتتطابق مع أبعاد شاشتك والـ Mirror
+                        ctx.moveTo((1 - pt1.x) * canvasElement.width, pt1.y * canvasElement.height);
+                        ctx.lineTo((1 - pt2.x) * canvasElement.width, pt2.y * canvasElement.height);
+                        
+                        // فلاتر التوهج النيوني السريع
+                        ctx.strokeStyle = '#00f3ff';
+                        ctx.lineWidth = 3;
+                        ctx.shadowBlur = 15;
+                        ctx.shadowColor = '#00f3ff';
+                        ctx.stroke();
                     });
 
-                    // حفظ موقع السبابة (8) والإبهام (4) لليد الحالية لاستخدامها في بناء المستطيل الوسطي
-                    handCenters.push({
-                        thumb: { x: -(landmarks[4].x * 2 - 1), y: -(landmarks[4].y * 2 - 1) },
-                        index: { x: -(landmarks[8].x * 2 - 1), y: -(landmarks[8].y * 2 - 1) }
+                    // 2. رسم النقاط المضيئة فوق المفاصل الـ 21
+                    landmarks.forEach((pt) => {
+                        ctx.beginPath();
+                        ctx.arc((1 - pt.x) * canvasElement.width, pt.y * canvasElement.height, 5, 0, 2 * Math.PI);
+                        ctx.fillStyle = '#ffffff';
+                        ctx.shadowBlur = 10;
+                        ctx.shadowColor = '#00f3ff';
+                        ctx.fill();
+                    });
+
+                    // حفظ موقع السبابة (8) والإبهام (4) لليد الحالية
+                    handPoints.push({
+                        thumb: { x: (1 - landmarks[4].x) * canvasElement.width, y: landmarks[4].y * canvasElement.height },
+                        index: { x: (1 - landmarks[8].x) * canvasElement.width, y: landmarks[8].y * canvasElement.height }
                     });
                 }
-                dotPosAttr.needsUpdate = true;
 
-                // 🌟 الشرط السحري: إذا تم رصد يدين اثنتين معاً في الكادر، قم ببناء مستطيل الليزر المركزي!
-                if (handCenters.length === 2) {
-                    const h1 = handCenters[0];
-                    const h2 = handCenters[1];
+                // 🌟 الشرط السحري: إذا رأى الذكاء الاصطناعي اليدين معاً (handPoints يحتوي على عنصرين)
+                if (handPoints.length === 2) {
+                    const hand1 = handPoints[0];
+                    const hand2 = handPoints[1];
 
-                    const portalPosAttr = portalGeometry.attributes.position;
-                    
-                    // بناء أركان المستطيل برمجياً ليربط بين أطراف أصابع اليد الأولى واليد الثانية ديناميكياً
-                    portalPosAttr.array[0] = h1.index.x; portalPosAttr.array[1] = h1.index.y; portalPosAttr.array[2] = 0; // ركن 1: سبابة اليد أ
-                    portalPosAttr.array[3] = h2.index.x; portalPosAttr.array[4] = h2.index.y; portalPosAttr.array[5] = 0; // ركن 2: سبابة اليد ب
-                    portalPosAttr.array[6] = h2.thumb.x; portalPosAttr.array[7] = h2.thumb.y; portalPosAttr.array[8] = 0; // ركن 3: إبهام اليد ب
-                    portalPosAttr.array[9] = h1.thumb.x; portalPosAttr.array[10] = h1.thumb.y; portalPosAttr.array[11] = 0; // ركن 4: إبهام اليد أ
-                    portalPosAttr.array[12] = h1.index.x; portalPosAttr.array[13] = h1.index.y; portalPosAttr.array[14] = 0; // إغلاق المستطيل
+                    // رسم المستطيل الليزري المركزي المشع الذي يربط بين أصابع اليدين
+                    ctx.beginPath();
+                    ctx.moveTo(hand1.index.x, hand1.index.y); // سبابة اليد 1
+                    ctx.lineTo(hand2.index.x, hand2.index.y); // سبابة اليد 2
+                    ctx.lineTo(hand2.thumb.x, hand2.thumb.y); // إبهام اليد 2
+                    ctx.lineTo(hand1.thumb.x, hand1.thumb.y); // إبهام اليد 1
+                    ctx.closePath(); // إغلاق المستطيل تلقائياً
 
-                    portalPosAttr.needsUpdate = true;
-                    portalLine.visible = true; // إظهار المستطيل المتوهج فوراً
+                    // ستايل المستطيل الليزري المتوهج (تطابق تام مع فيديو فيسبوك)
+                    ctx.strokeStyle = '#00f3ff';
+                    ctx.lineWidth = 5; // خط عريض وواضح
+                    ctx.shadowBlur = 25; // هالة توهج عريضة جداً
+                    ctx.shadowColor = '#00f3ff';
+                    ctx.stroke();
+
+                    // ملء المستطيل من الداخل بلون أزرق ليزري شفاف جداً لإعطاء مظهر الشاشة الهولوغرامية
+                    ctx.fillStyle = 'rgba(0, 243, 255, 0.08)';
+                    ctx.fill();
                 }
             }
-
-            renderer.render(scene, camera);
         }
 
-        // --- تشغيل ومزامنة الكاميرا والذكاء الاصطناعي ---
+        // --- تشغيل ومزامنة النظام بالكامل ---
         const hands = new Hands({
             locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
         });
 
-        // تم ضبط الحسابات لتعمل على يدين اثنتين بدقة وسرعة متوازنة تناسب معالج الـ A51
+        // تغيير معيار التعرف لجعل المتصفح يركز بقوة على اليدين معاً (maxNumHands: 2)
         hands.setOptions({
-            maxNumHands: 2, modelComplexity: 0, minDetectionConfidence: 0.45, minTrackingConfidence: 0.45
+            maxNumHands: 2,
+            modelComplexity: 1, // استخدام النموذج الاحترافي الكامل لليدين
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
         });
         hands.onResults(onResults);
 
         hands.initialize().then(() => {
             spinner.style.display = 'none';
-            loadingText.innerText = "طاقة البوابة مستعدة تماماً!";
+            loadingText.innerText = "اكتمل الكود الخارق! ارفع يديك الإثنتين معاً الآن.";
             startBtn.style.display = 'block';
         });
 
@@ -243,7 +197,7 @@
             setTimeout(() => loadingOverlay.style.display = 'none', 500);
 
             navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "user", width: { ideal: 480 }, height: { ideal: 360 } }, // دقة مثالية وسريعة جداً للموبايل
+                video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }, 
                 audio: false 
             })
             .then((stream) => {
@@ -261,12 +215,8 @@
                 };
             })
             .catch(error => {
-                alert("برجاء إعطاء صلاحية الكاميرا للمتصفح: " + error.message);
+                alert("برجاء إعطاء المتصفح صلاحية فتح الكاميرا: " + error.message);
             });
-        });
-
-        window.addEventListener('resize', () => {
-            renderer.setSize(window.innerWidth, window.innerHeight);
         });
     </script>
 </body>
