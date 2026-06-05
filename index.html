@@ -3,52 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>السوبر باور الكامل - واجهة الفيسبوك الهولوغرامية ⚡</title>
+    <title>بوابة النيون المكتملة - تتبع اليدين والوجه ⚡</title>
     
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
 
     <style>
         body, html {
             margin: 0; padding: 0; width: 100%; height: 100%;
             overflow: hidden; background-color: #000; font-family: sans-serif;
         }
-
         #container { position: relative; width: 100%; height: 100%; }
-
         #webcam {
-            position: absolute; top: 0; left: 0;
-            width: 100%; height: 100%; object-fit: cover;
-            transform: scaleX(-1);
-            z-index: 5;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover;
+            transform: scaleX(-1); z-index: 5;
         }
-
-        #visuals {
-            position: absolute; top: 0; left: 0;
-            width: 100%; height: 100%; z-index: 10;
-            pointer-events: none;
-        }
-
+        #visuals { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
         #loading-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: #040408; display: flex; flex-direction: column;
             justify-content: center; align-items: center; color: #00f3ff;
             z-index: 100; text-shadow: 0 0 10px #00f3ff; padding: 20px; text-align: center;
         }
-
         .spinner {
             border: 4px solid rgba(0, 243, 255, 0.1); width: 45px; height: 45px;
-            border-radius: 50%; border-left-color: #00f3ff;
-            animation: spin 1s linear infinite; margin-bottom: 20px;
+            border-radius: 50%; border-left-color: #00f3ff; animation: spin 1s linear infinite; margin-bottom: 20px;
         }
-
         #start-btn {
-            display: none; background: transparent; color: #00f3ff;
-            border: 2px solid #00f3ff; padding: 14px 35px; font-size: 18px;
-            font-weight: bold; border-radius: 25px; cursor: pointer;
+            display: none; background: transparent; color: #00f3ff; border: 2px solid #00f3ff;
+            padding: 14px 35px; font-size: 18px; font-weight: bold; border-radius: 25px; cursor: pointer;
             box-shadow: 0 0 15px rgba(0, 243, 255, 0.3); transition: all 0.3s;
         }
-
         #start-btn:active { transform: scale(0.95); background: #00f3ff; color: #000; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
@@ -59,9 +45,9 @@
         <div id="loading-overlay">
             <div id="status-container">
                 <div class="spinner"></div>
-                <h3 id="loading-text">جاري تفعيل شاشة الجرافيك النيوني الرقمية الحية...</h3>
+                <h3 id="loading-text">جاري دمج تتبع اليدين المطور وقناع الوجه النيوني...</h3>
             </div>
-            <button id="start-btn">إطلاق طاقة الهولوغرام ⚡</button>
+            <button id="start-btn">إطلاق الطاقة القصوى (يدين + وجه) ⚡</button>
         </div>
 
         <video id="webcam" autoplay playsinline muted></video>
@@ -84,59 +70,81 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        // الروابط لربط المفاصل برسم نيون خفيف وسريع جداً
-        const CONNECTIONS = [
-            [0,1], [1,2], [2,3], [3,4],       
-            [0,5], [5,6], [6,7], [7,8],       
-            [5,9], [9,10], [10,11], [11,12],  
-            [9,13], [13,14], [14,15], [15,16], 
-            [0,17], [17,18], [18,19], [19,20], 
-            [5,17] 
+        // روابط اليدين الـ 21
+        const HAND_CONNECTIONS = [
+            [0,1], [1,2], [2,3], [3,4], [0,5], [5,6], [6,7], [7,8],
+            [5,9], [9,10], [10,11], [11,12], [9,13], [13,14], [14,15], [15,16],
+            [0,17], [17,18], [18,19], [19,20], [5,17]
         ];
 
-        // دالة فائقة الخفة لرسم تأثير ومربعات الـ Digital Grid Overlay بالداخل
+        // مصفوفات ملامح الوجه الأساسية (أرقام المفاصل من أصل 468 نقطة)
+        const FACE_OVAL = [10,  338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379, 378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58,  132, 93,  234, 127, 162, 21,  54,  103, 67,  109];
+        const LIPS = [78, 95, 88, 178, 87, 14, 317, 402, 318, 324, 308, 415, 310, 311, 312, 13, 82, 81, 80, 191];
+        const LEFT_EYE = [33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246];
+        const RIGHT_EYE = [263, 249, 390, 373, 374, 380, 381, 382, 362, 398, 384, 385, 386, 387, 388, 466];
+
+        // حفظ نتائج الرصد لمزامنتها مع شاشة الرسم الحية
+        let latestHandResults = null;
+        let latestFaceResults = null;
+
+        // دالة رسم الشبكة الرقمية الداخلية للمستطيل
         function drawDigitalGrid(p1, p2, p3, p4) {
             ctx.save();
             ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
-            ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y);
-            ctx.closePath();
-            ctx.clip(); // حصر الرسم بالداخل فقط
+            ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y);
+            ctx.closePath(); ctx.clip();
 
-            // 1. تعبئة الخلفية باللون الأزرق الليزري الشفاف
-            ctx.fillStyle = 'rgba(0, 243, 255, 0.08)';
-            ctx.fill();
+            ctx.fillStyle = 'rgba(0, 243, 255, 0.08)'; ctx.fill();
+            ctx.strokeStyle = 'rgba(0, 243, 255, 0.2)'; ctx.lineWidth = 1;
 
-            // 2. رسم خطوط الشبكة الهندسية (مربعات واجهة المستخدم)
-            ctx.strokeStyle = 'rgba(0, 243, 255, 0.2)';
-            ctx.lineWidth = 1;
-            ctx.shadowBlur = 0; // إيقاف التوهج الداخلي حمايةً للمعالج
+            const minX = Math.min(p1.x, p2.x, p3.x, p4.x), maxX = Math.max(p1.x, p2.x, p3.x, p4.x);
+            const minY = Math.min(p1.y, p2.y, p3.y, p4.y), maxY = Math.max(p1.y, p2.y, p3.y, p4.y);
+            const space = 20;
 
-            const minX = Math.min(p1.x, p2.x, p3.x, p4.x);
-            const maxX = Math.max(p1.x, p2.x, p3.x, p4.x);
-            const minY = Math.min(p1.y, p2.y, p3.y, p4.y);
-            const maxY = Math.max(p1.y, p2.y, p3.y, p4.y);
-
-            const space = 20; // حجم المربع الرقمي بالداخل
-
-            for (let x = minX; x < maxX; x += space) {
-                ctx.beginPath(); ctx.moveTo(x, minY); ctx.lineTo(x, maxY); ctx.stroke();
-            }
-            for (let y = minY; y < maxY; y += space) {
-                ctx.beginPath(); ctx.moveTo(minX, y); ctx.lineTo(maxX, y); ctx.stroke();
-            }
+            for (let x = minX; x < maxX; x += space) { ctx.beginPath(); ctx.moveTo(x, minY); ctx.lineTo(x, maxY); ctx.stroke(); }
+            for (let y = minY; y < maxY; y += space) { ctx.beginPath(); ctx.moveTo(minX, y); ctx.lineTo(maxX, y); ctx.stroke(); }
             ctx.restore();
         }
 
-        function onResults(results) {
+        // دالة مساعدة لرسم ملامح الوجه بخطوط نيون متصلة ومضيئة
+        function drawFaceFeature(landmarks, indexArray, color, closePath = true) {
+            if (!landmarks || landmarks.length === 0) return;
+            ctx.beginPath();
+            indexArray.forEach((idx, i) => {
+                const pt = landmarks[idx];
+                const x = (1 - pt.x) * canvasElement.width;
+                const y = pt.y * canvasElement.height;
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            });
+            if (closePath) ctx.closePath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.shadowBlur = 8;
+            ctx.shadowColor = color;
+            ctx.stroke();
+        }
+
+        // المحرك الرئيسي الموحد للرسم لضمان السرعة الفائقة والأداء الثابت
+        function drawEverything() {
             ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+            // 1. رسم الوجه والملامح (القناع النيوني المتوهج)
+            if (latestFaceResults && latestFaceResults.multiFaceLandmarks) {
+                for (const landmarks of latestFaceResults.multiFaceLandmarks) {
+                    drawFaceFeature(landmarks, FACE_OVAL, '#00f3ff'); // تحديد الوجه الخارجي بالنيون الأزرق
+                    drawFaceFeature(landmarks, LIPS, '#ff0055');      // شفاه نيون وردية متوهجة
+                    drawFaceFeature(landmarks, LEFT_EYE, '#00ff66');  // العين اليسرى بلون أخضر سايبر
+                    drawFaceFeature(landmarks, RIGHT_EYE, '#00ff66'); // العين اليمنى بلون أخضر سايبر
+                }
+            }
+
+            // 2. رسم اليدين والمفاصل والمستطيل الهولوغرامي المكتمل
+            if (latestHandResults && latestHandResults.multiHandLandmarks) {
                 let handData = [];
 
-                for (const landmarks of results.multiHandLandmarks) {
-                    // رسم مفاصل وخطوط أصابع اليد
-                    CONNECTIONS.forEach((conn) => {
+                for (const landmarks of latestHandResults.multiHandLandmarks) {
+                    // إرجاع خطوط اليد
+                    HAND_CONNECTIONS.forEach((conn) => {
                         const pt1 = landmarks[conn[0]]; const pt2 = landmarks[conn[1]];
                         ctx.beginPath();
                         ctx.moveTo((1 - pt1.x) * canvasElement.width, pt1.y * canvasElement.height);
@@ -145,60 +153,52 @@
                         ctx.stroke();
                     });
 
-                    // حفظ قيم السبابة (8) والإبهام (4) لليد الحالية
+                    // ✨ إرجاع النقاط المضيئة فوق الـ 21 مفصل لكل يد بالكامل!
+                    landmarks.forEach((pt) => {
+                        ctx.beginPath(); ctx.arc((1 - pt.x) * canvasElement.width, pt.y * canvasElement.height, 4, 0, 2 * Math.PI);
+                        ctx.fillStyle = '#ffffff'; ctx.shadowBlur = 6; ctx.shadowColor = '#00f3ff'; ctx.fill();
+                    });
+
                     handData.push({
                         thumb: { x: (1 - landmarks[4].x) * canvasElement.width, y: landmarks[4].y * canvasElement.height },
                         index: { x: (1 - landmarks[8].x) * canvasElement.width, y: landmarks[8].y * canvasElement.height }
                     });
                 }
 
-                // الكود يلتقط اليدين معاً ويرسم واجهة النيون المشعة والشبكة الرقمية فوراً!
+                // رسم بوابة الفيسبوك المستطيلة والشبكة الداخلية
                 if (handData.length === 2) {
-                    // فرز اليد اليسرى واليد اليمنى بناءً على موقعهما على الشاشة لمنع التقاطع المعيب
                     handData.sort((a, b) => a.index.x - b.index.x);
+                    const topLeft = handData[0].index, bottomLeft = handData[0].thumb;
+                    const topRight = handData[1].index, bottomRight = handData[1].thumb;
 
-                    const leftHand = handData[0];  // اليد التي تقع على اليسار
-                    const rightHand = handData[1]; // اليد التي تقع على اليمين
-
-                    // تحديد نقاط المستطيل الأربعة بالترتيب الدائري السليم
-                    const topLeft = leftHand.index;
-                    const bottomLeft = leftHand.thumb;
-                    const topRight = rightHand.index;
-                    const bottomRight = rightHand.thumb;
-
-                    // أولاً: رسم الشبكة الرقمية الداخلية (Digital Grid Overlay)
                     drawDigitalGrid(topLeft, topRight, bottomRight, bottomLeft);
 
-                    // ثانياً: رسم إطار مستطيل الليزر الخارجي عالي التوهج
                     ctx.beginPath();
-                    ctx.moveTo(topLeft.x, topLeft.y);
-                    ctx.lineTo(topRight.x, topRight.y);
-                    ctx.lineTo(bottomRight.x, bottomRight.y);
-                    ctx.lineTo(bottomLeft.x, bottomLeft.y);
+                    ctx.moveTo(topLeft.x, topLeft.y); ctx.lineTo(topRight.x, topRight.y);
+                    ctx.lineTo(bottomRight.x, bottomRight.y); ctx.lineTo(bottomLeft.x, bottomLeft.y);
                     ctx.closePath();
 
-                    ctx.strokeStyle = '#00f3ff';
-                    ctx.lineWidth = 4;
-                    ctx.shadowBlur = 20; // الهالة المضيئة العريضة المحيطة بالبوابة
-                    ctx.shadowColor = '#00f3ff';
+                    ctx.strokeStyle = '#00f3ff'; ctx.lineWidth = 4; ctx.shadowBlur = 20; ctx.shadowColor = '#00f3ff';
                     ctx.stroke();
                 }
             }
+            requestAnimationFrame(drawEverything);
         }
 
-        const hands = new Hands({
-            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-        });
+        // إعدادات مكتبة اليدين
+        const hands = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
+        hands.setOptions({ maxNumHands: 2, modelComplexity: 0, minDetectionConfidence: 0.45, minTrackingConfidence: 0.45 });
+        hands.onResults((results) => { latestHandResults = results; });
 
-        // إعداد متوازن يضمن استقرار الكود على هاتف A51 بدون تجميد
-        hands.setOptions({
-            maxNumHands: 2, modelComplexity: 0, minDetectionConfidence: 0.4, minTrackingConfidence: 0.4
-        });
-        hands.onResults(onResults);
+        // إعدادات مكتبة الوجه
+        const faceMesh = new FaceMesh({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}` });
+        faceMesh.setOptions({ maxNumFaces: 1, refineLandmarks: false, minDetectionConfidence: 0.45, minTrackingConfidence: 0.45 });
+        faceMesh.onResults((results) => { latestFaceResults = results; });
 
-        hands.initialize().then(() => {
+        // بدء التشغيل المتزامن للمكتبات
+        Promise.all([hands.initialize(), faceMesh.initialize()]).then(() => {
             spinner.style.display = 'none';
-            loadingText.innerText = "شاشة الجرافيك المضيئة جاهزة للتفعيل!";
+            loadingText.innerText = "اكتمل دمج اليدين والوجه بنجاح المطور الخارق!";
             startBtn.style.display = 'block';
         });
 
@@ -206,19 +206,27 @@
             loadingOverlay.style.opacity = '0';
             setTimeout(() => loadingOverlay.style.display = 'none', 500);
 
-            navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "user", width: 320, height: 240 }, 
-                audio: false 
-            })
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: 320, height: 240 }, audio: false })
             .then((stream) => {
                 videoElement.srcObject = stream;
+                
                 const processVideo = async () => {
                     if (!videoElement.paused && !videoElement.ended) {
-                        try { await hands.send({ image: videoElement }); } catch (e) {}
+                        // إرسال الإطارات لليدين والوجه معاً في الوقت الفعلي للتتبع المزدوج
+                        try {
+                            await hands.send({ image: videoElement });
+                            await faceMesh.send({ image: videoElement });
+                        } catch (e) {}
                     }
                     requestAnimationFrame(processVideo);
                 };
-                videoElement.onloadedmetadata = () => { videoElement.play().then(() => { processVideo(); }); };
+
+                videoElement.onloadedmetadata = () => {
+                    videoElement.play().then(() => { 
+                        processVideo(); 
+                        drawEverything(); // إطلاق حلقة الرسم اللانهائي السريعة
+                    });
+                };
             });
         });
     </script>
