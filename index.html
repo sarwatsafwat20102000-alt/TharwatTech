@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>بوابة النيون الذكية المكتملة (يدين + وجه) ⚡</title>
+    <title>بوابة النيون ومحرك كرات النار الديناميكي ⚡🔥</title>
     
     <script src="https://unpkg.com/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
-    <script src="https://unpkg.com/@mediapipe/face_detection/face_detection.js" crossorigin="anonymous"></script>
 
     <style>
         body, html {
@@ -23,21 +22,21 @@
         #loading-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: #040408; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; color: #00f3ff;
-            z-index: 100; text-shadow: 0 0 10px #00f3ff; padding: 20px; text-align: center;
+            justify-content: center; align-items: center; color: #ff5500;
+            z-index: 100; text-shadow: 0 0 10px #ff5500; padding: 20px; text-align: center;
         }
         .spinner {
-            border: 4px solid rgba(0, 243, 255, 0.1); width: 45px; height: 45px;
-            border-radius: 50%; border-left-color: #00f3ff;
+            border: 4px solid rgba(255, 85, 0, 0.1); width: 45px; height: 45px;
+            border-radius: 50%; border-left-color: #ff5500;
             animation: spin 1s linear infinite; margin-bottom: 20px;
         }
         #start-btn {
-            display: none; background: transparent; color: #00f3ff;
-            border: 2px solid #00f3ff; padding: 14px 35px; font-size: 18px;
+            display: none; background: transparent; color: #ff5500;
+            border: 2px solid #ff5500; padding: 14px 35px; font-size: 18px;
             font-weight: bold; border-radius: 25px; cursor: pointer;
-            box-shadow: 0 0 15px rgba(0, 243, 255, 0.3); transition: all 0.3s;
+            box-shadow: 0 0 15px rgba(255, 85, 0, 0.3); transition: all 0.3s;
         }
-        #start-btn:active { transform: scale(0.95); background: #00f3ff; color: #000; }
+        #start-btn:active { transform: scale(0.95); background: #ff5500; color: #000; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
@@ -47,9 +46,9 @@
         <div id="loading-overlay">
             <div id="status-container">
                 <div class="spinner"></div>
-                <h3 id="loading-text">جاري دمج تتبع اليدين وقناع الوجه النيوني فائق النقاء...</h3>
+                <h3 id="loading-text">جاري تحضير مصفوفة تتبع اليدين وشحن طاقة اللهب...</h3>
             </div>
-            <button id="start-btn">إطلاق الطاقة القصوى (يدين + وجه) ⚡</button>
+            <button id="start-btn">إطلاق محرك كرات النار ⚡🔥</button>
         </div>
 
         <video id="webcam" autoplay playsinline muted></video>
@@ -82,14 +81,70 @@
         ];
 
         const FINGER_TIPS = [4, 8, 12, 16, 20];
+        
+        // مصفوفة لتخزين جزيئات النار النشطة
+        let fireParticles = [];
 
         function getDistance(p1, p2) {
             return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
         }
 
-        // حفظ نتائج الرصد من المحركين لمزامنتها في الرسم
-        let latestHandResults = null;
-        let latestFaceResults = null;
+        // صنف لبناء جزيء نار ذكي منفرد (Spark)
+        class FireParticle {
+            constructor(x, y, radiusRange) {
+                this.x = x + (Math.random() - 0.5) * (radiusRange * 0.6);
+                this.y = y + (Math.random() - 0.5) * (radiusRange * 0.6);
+                this.size = Math.random() * 12 + 6;
+                this.speedY = Math.random() * -4 - 2; // سرعة الصعود لأعلى
+                this.speedX = (Math.random() - 0.5) * 3; // تشتت جانبي خفيف
+                this.life = 1.0; // عمر الجزيء (يبدأ من 100% ثم يتلاشى)
+                this.decay = Math.random() * 0.03 + 0.015; // سرعة التلاشي
+                
+                // تدرج الألوان النارية الحقيقية
+                const r = 255;
+                const g = Math.floor(Math.random() * 150); // يميل للأصفر أو البرتقالي
+                const b = 0;
+                this.color = `rgba(${r}, ${g}, ${b},`;
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                this.life -= this.decay;
+                if (this.size > 0.2) this.size -= 0.1;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, 2 * Math.PI);
+                ctx.fillStyle = this.color + this.life + ')';
+                ctx.shadowBlur = this.size * 1.5;
+                ctx.shadowColor = 'rgba(255, 68, 0, 0.8)';
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // دالة توليد وتحديث كرة النار في المركز المختار
+        function createFireball(centerX, centerY, currentRadius) {
+            // توليد جزيئات جديدة باستمرار بناءً على حجم المستطيل بين اليدين
+            const intensity = Math.min(20, Math.floor(currentRadius / 15) + 5);
+            for (let i = 0; i < intensity; i++) {
+                fireParticles.push(new FireParticle(centerX, centerY, currentRadius));
+            }
+
+            // تحديث ورسم الجزيئات الموجودة حالياً
+            for (let i = fireParticles.length - 1; i >= 0; i--) {
+                fireParticles[i].update();
+                fireParticles[i].draw();
+                
+                // حذف الجزيئات الميتة لتخفيف العبء عن المعالج
+                if (fireParticles[i].life <= 0 || fireParticles[i].size <= 0) {
+                    fireParticles.splice(i, 1);
+                }
+            }
+        }
 
         function drawDigitalGrid(p1, p2, p3, p4) {
             ctx.save();
@@ -97,8 +152,8 @@
             ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y);
             ctx.closePath(); ctx.clip();
 
-            ctx.fillStyle = 'rgba(0, 243, 255, 0.08)'; ctx.fill();
-            ctx.strokeStyle = 'rgba(0, 243, 255, 0.15)'; ctx.lineWidth = 1.2;
+            ctx.fillStyle = 'rgba(255, 85, 0, 0.05)'; ctx.fill(); // تحويل لون الشبكة إلى برتقالي هولوغرامي دافئ
+            ctx.strokeStyle = 'rgba(255, 85, 0, 0.15)'; ctx.lineWidth = 1.2;
 
             const minX = Math.min(p1.x, p2.x, p3.x, p4.x), maxX = Math.max(p1.x, p2.x, p3.x, p4.x);
             const minY = Math.min(p1.y, p2.y, p3.y, p4.y), maxY = Math.max(p1.y, p2.y, p3.y, p4.y);
@@ -109,58 +164,26 @@
             ctx.restore();
         }
 
-        // المحرك الرئيسي الموحد للرسم لضمان أعلى كفاءة وثبات
-        function drawEverything() {
+        function onResults(results) {
             ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-            // 1. قسم التعرف على الوجه ورسم المؤثرات (تمت إضافته هنا)
-            if (latestFaceResults && latestFaceResults.detectedFaces) {
-                for (const face of latestFaceResults.detectedFaces) {
-                    const boundingBox = face.boundingBox;
-                    const x = (1 - boundingBox.xCenter - boundingBox.width / 2) * canvasElement.width;
-                    const y = (boundingBox.yCenter - boundingBox.height / 2) * canvasElement.height;
-                    const w = boundingBox.width * canvasElement.width;
-                    const h = boundingBox.height * canvasElement.height;
-
-                    const centerX = x + w / 2;
-                    const centerY = y + h / 2;
-                    const radius = Math.max(w, h) / 1.7;
-
-                    // رسم دائرة النيون حول الوجه
-                    ctx.beginPath();
-                    ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-                    ctx.strokeStyle = '#00ff66'; ctx.lineWidth = 2.5; ctx.shadowBlur = 12; ctx.shadowColor = '#00ff66';
-                    ctx.stroke();
-
-                    // رسم نقاط ليزر فوق العينين
-                    if (face.landmarks) {
-                        face.landmarks.slice(0, 2).forEach((lm) => {
-                            ctx.beginPath();
-                            ctx.arc((1 - lm.x) * canvasElement.width, lm.y * canvasElement.height, 5, 0, 2 * Math.PI);
-                            ctx.fillStyle = '#ff0055'; ctx.shadowBlur = 10; ctx.shadowColor = '#ff0055';
-                            ctx.fill();
-                        });
-                    }
-                }
-            }
-
-            // 2. قسم تتبع اليدين ورسم المستطيل الديناميكي الخاص بك
-            if (latestHandResults && latestHandResults.multiHandLandmarks) {
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
                 let allHandsTips = [];
 
-                for (const landmarks of latestHandResults.multiHandLandmarks) {
+                for (const landmarks of results.multiHandLandmarks) {
                     CONNECTIONS.forEach((conn) => {
                         const pt1 = landmarks[conn[0]]; const pt2 = landmarks[conn[1]];
                         ctx.beginPath();
                         ctx.moveTo((1 - pt1.x) * canvasElement.width, pt1.y * canvasElement.height);
                         ctx.lineTo((1 - pt2.x) * canvasElement.width, pt2.y * canvasElement.height);
-                        ctx.strokeStyle = '#00f3ff'; ctx.lineWidth = 2.5; ctx.shadowBlur = 12; ctx.shadowColor = '#00f3ff';
+                        ctx.strokeStyle = '#ff5500'; // تحويل هيكل اليدين إلى اللون البرتقالي الناري المتوهج
+                        ctx.lineWidth = 2.5; ctx.shadowBlur = 12; ctx.shadowColor = '#ff5500';
                         ctx.stroke();
                     });
 
                     landmarks.forEach((pt) => {
                         ctx.beginPath(); ctx.arc((1 - pt.x) * canvasElement.width, pt.y * canvasElement.height, 5, 0, 2 * Math.PI);
-                        ctx.fillStyle = '#ffffff'; ctx.shadowBlur = 8; ctx.shadowColor = '#00f3ff'; ctx.fill();
+                        ctx.fillStyle = '#ffffff'; ctx.shadowBlur = 8; ctx.shadowColor = '#ff5500'; ctx.fill();
                     });
 
                     let tips = FINGER_TIPS.map(index => {
@@ -201,33 +224,58 @@
 
                         drawDigitalGrid(topLeft, bottomLeft, bottomRight, topRight);
 
+                        // رسم المستطيل النيوني الحاضن للنار
                         ctx.beginPath();
                         ctx.moveTo(topLeft.x, topLeft.y); ctx.lineTo(bottomLeft.x, bottomLeft.y);
                         ctx.lineTo(bottomRight.x, bottomRight.y); ctx.lineTo(topRight.x, topRight.y);
                         ctx.closePath();
 
-                        ctx.strokeStyle = '#00f3ff'; ctx.lineWidth = 4.5; ctx.shadowBlur = 25; ctx.shadowColor = '#00f3ff';
+                        ctx.strokeStyle = '#ff3300'; ctx.lineWidth = 4.5; ctx.shadowBlur = 25; ctx.shadowColor = '#ff3300';
                         ctx.stroke();
+
+                        // 🔥 حساب المركز الفعلي للمستطيل ونصف القطر التلقائي لبدء الاشتعال ديناميكياً
+                        const fireCenterX = (topLeft.x + bottomLeft.x + bottomRight.x + topRight.x) / 4;
+                        const fireCenterY = (topLeft.y + bottomLeft.y + bottomRight.y + topRight.y) / 4;
+                        const currentRadius = getDistance(topLeft, bottomRight) / 2;
+
+                        // تشغيل كرة النار الحية المتوهجة في المنتصف!
+                        createFireball(fireCenterX, fireCenterY, currentRadius);
+                    }
+                } else if (allHandsTips.length === 1) {
+                    // ميزة إضافية: إذا ظهرت يد واحدة فقط، تولد نار خفيفة عند كف اليد (النقطة 0) لتأثير مستمر!
+                    const singleHand = results.multiHandLandmarks[0];
+                    const hX = (1 - singleHand[9].x) * canvasElement.width; // نقطة منتصف الكف
+                    const hY = singleHand[9].y * canvasElement.height;
+                    createFireball(hX, hY, 40);
+                }
+            } else {
+                // تصفية الجزيئات المتبقية في حال اختفاء الأيدي فجأة
+                if (fireParticles.length > 0) {
+                    ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+                    for (let i = fireParticles.length - 1; i >= 0; i--) {
+                        fireParticles[i].update();
+                        fireParticles[i].draw();
+                        if (fireParticles[i].life <= 0) fireParticles.splice(i, 1);
                     }
                 }
             }
-            requestAnimationFrame(drawEverything);
         }
 
-        // تهيئة محرك اليدين من روابط السيرفر السريع
-        const hands = new Hands({ locateFile: (file) => `https://unpkg.com/@mediapipe/hands/${file}` });
-        hands.setOptions({ maxNumHands: 2, modelComplexity: 0, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
-        hands.onResults((results) => { latestHandResults = results; });
+        const hands = new Hands({
+            locateFile: (file) => `https://unpkg.com/@mediapipe/hands/${file}`
+        });
 
-        // تهيئة محرك الوجه من روابط السيرفر السريع
-        const faceDetection = new FaceDetection({ locateFile: (file) => `https://unpkg.com/@mediapipe/face_detection/${file}` });
-        faceDetection.setOptions({ modelSelection: 0, minDetectionConfidence: 0.5 });
-        faceDetection.onResults((results) => { latestFaceResults = results; });
+        hands.setOptions({
+            maxNumHands: 2,
+            modelComplexity: 0, 
+            minDetectionConfidence: 0.5, 
+            minTrackingConfidence: 0.5
+        });
+        hands.onResults(onResults);
 
-        // تشغيل فوري بمجرد تحميل المحركين
-        Promise.all([hands.initialize(), faceDetection.initialize()]).then(() => {
+        hands.initialize().then(() => {
             spinner.style.display = 'none';
-            loadingText.innerText = "اكتمل دمج النظام بالكامل!";
+            loadingText.innerText = "اكتمل شحن محرك اللهب! جاهز للعرض السينمائي.";
             startBtn.style.display = 'block';
         });
 
@@ -235,7 +283,6 @@
             loadingOverlay.style.opacity = '0';
             setTimeout(() => loadingOverlay.style.display = 'none', 500);
 
-            // دقة HD كاملة لاستغلال الـ 48 ميجابكسل ومنع البكسلة
             navigator.mediaDevices.getUserMedia({ 
                 video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } }, 
                 audio: false 
@@ -245,17 +292,17 @@
                 
                 const processVideo = async () => {
                     if (!videoElement.paused && !videoElement.ended) {
-                        try { 
-                            await hands.send({ image: videoElement }); 
-                            await faceDetection.send({ image: videoElement }); 
-                        } catch (e) {}
+                        try { await hands.send({ image: videoElement }); } catch (e) {}
                     }
                     requestAnimationFrame(processVideo);
                 };
 
                 videoElement.onloadedmetadata = () => {
-                    videoElement.play().then(() => { processVideo(); drawEverything(); });
+                    videoElement.play().then(() => { processVideo(); });
                 };
+            })
+            .catch(error => {
+                alert("صلاحية الكاميرا مطلوبة: " + error.message);
             });
         });
     </script>
