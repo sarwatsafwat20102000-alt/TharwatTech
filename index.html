@@ -46,7 +46,7 @@
         <div id="loading-overlay">
             <div id="status-container">
                 <div class="spinner"></div>
-                <h3 id="loading-text">جاري تشغيل محرك الذكاء الاصطناعي لعد الأصابع...</h3>
+                <h3 id="loading-text">جاري تشغيل محرك الذكاء الاصطناعي لعد الأصابع الصافي...</h3>
             </div>
             <button id="start-btn">ابدأ تشغيل الكاميرا والعد ⚡✋</button>
         </div>
@@ -71,7 +71,6 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        // روابط الهيكل العظمي لليد
         const CONNECTIONS = [
             [0,1], [1,2], [2,3], [3,4],       
             [0,5], [5,6], [6,7], [7,8],       
@@ -81,10 +80,8 @@
             [5,17] 
         ];
 
-        // دالة مخصصة لرسم رقم نيون فوق طرف كل إصبع مرفوع
         function drawFingerNumber(x, y, text) {
             ctx.save();
-            // رسم دائرة نيونية خلفية تحت الرقم ليظهر بوضوح سينمائي
             ctx.beginPath();
             ctx.arc(x, y - 25, 16, 0, 2 * Math.PI);
             ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
@@ -95,7 +92,6 @@
             ctx.fill();
             ctx.stroke();
 
-            // طباعة الرقم داخل الدائرة
             ctx.font = "bold 15px sans-serif";
             ctx.fillStyle = "#ffffff";
             ctx.textAlign = "center";
@@ -104,7 +100,6 @@
             ctx.restore();
         }
 
-        // دالة لإظهار لوحة إجمالي عدد الأصابع المرفوعة في زاوية الشاشة
         function drawTotalCountHUD(totalCount) {
             ctx.save();
             ctx.font = "bold 32px sans-serif";
@@ -116,16 +111,12 @@
         }
 
         function onResults(results) {
-            // مسح الشاشة في كل فريم لتحديث الرسوم بسلاسة
             ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
             let totalFingersOpen = 0;
 
             if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                
-                // الدوران حول كل يد تم رصدها في الكاميرا
                 results.multiHandLandmarks.forEach((landmarks, handIndex) => {
                     
-                    // 1. رسم عظام وهيكل اليد بلون نيون سيان
                     CONNECTIONS.forEach((conn) => {
                         const pt1 = landmarks[conn[0]]; const pt2 = landmarks[conn[1]];
                         ctx.beginPath();
@@ -135,17 +126,14 @@
                         ctx.stroke();
                     });
 
-                    // رسم نقاط المفاصل
                     landmarks.forEach((pt) => {
                         ctx.beginPath(); ctx.arc((1 - pt.x) * canvasElement.width, pt.y * canvasElement.height, 4, 0, 2 * Math.PI);
                         ctx.fillStyle = '#ffffff'; ctx.fill();
                     });
 
-                    // 2. حساب وترقيم الأصابع المرفوعة تلقائياً بناءً على مفاصل اليد
-                    let currentHandFingerCount = 1; // عداد ترقيم الأصابع لليد الحالية
+                    let currentHandFingerCount = 1;
                     const isLeftHand = results.multiHandedness[handIndex].label === 'Left';
 
-                    // --- فحص إصبع الإبهام (النقطة 4) أفقياً ---
                     let thumbOpen = isLeftHand ? (landmarks[4].x > landmarks[2].x) : (landmarks[4].x < landmarks[2].x);
                     if (thumbOpen) {
                         drawFingerNumber((1 - landmarks[4].x) * canvasElement.width, landmarks[4].y * canvasElement.height, currentHandFingerCount);
@@ -153,21 +141,73 @@
                         totalFingersOpen++;
                     }
 
-                    // --- فحص باقي الأصابع الأربعة عمودياً ---
-                    // السبابة (نقطة 8)
                     if (landmarks[8].y < landmarks[6].y) {
                         drawFingerNumber((1 - landmarks[8].x) * canvasElement.width, landmarks[8].y * canvasElement.height, currentHandFingerCount);
                         currentHandFingerCount++;
                         totalFingersOpen++;
                     }
-                    // الوسطى (نقطة 12)
                     if (landmarks[12].y < landmarks[10].y) {
                         drawFingerNumber((1 - landmarks[12].x) * canvasElement.width, landmarks[12].y * canvasElement.height, currentHandFingerCount);
                         currentHandFingerCount++;
                         totalFingersOpen++;
                     }
-                    // البنصر (نقطة 16)
                     if (landmarks[16].y < landmarks[14].y) {
                         drawFingerNumber((1 - landmarks[16].x) * canvasElement.width, landmarks[16].y * canvasElement.height, currentHandFingerCount);
                         currentHandFingerCount++;
-                        totalF
+                        totalFingersOpen++;
+                    }
+                    if (landmarks[20].y < landmarks[18].y) {
+                        drawFingerNumber((1 - landmarks[20].x) * canvasElement.width, landmarks[20].y * canvasElement.height, currentHandFingerCount);
+                        currentHandFingerCount++;
+                        totalFingersOpen++;
+                    }
+                });
+            }
+            drawTotalCountHUD(totalFingersOpen);
+        }
+
+        const hands = new Hands({
+            locateFile: (file) => `https://unpkg.com/@mediapipe/hands/${file}`
+        });
+
+        hands.setOptions({
+            maxNumHands: 2,
+            modelComplexity: 1, 
+            minDetectionConfidence: 0.6, 
+            minTrackingConfidence: 0.6
+        });
+        hands.onResults(onResults);
+
+        hands.initialize().then(() => {
+            spinner.style.display = 'none';
+            loadingText.innerText = "جاهز لرصد وعد الأصابع الآن!";
+            startBtn.style.display = 'block';
+        });
+
+        startBtn.addEventListener('click', () => {
+            loadingOverlay.style.opacity = '0';
+            setTimeout(() => loadingOverlay.style.display = 'none', 500);
+
+            navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } }, 
+                audio: false 
+            })
+            .then((stream) => {
+                videoElement.srcObject = stream;
+                const processVideo = async () => {
+                    if (!videoElement.paused && !videoElement.ended) {
+                        try { await hands.send({ image: videoElement }); } catch (e) {}
+                    }
+                    requestAnimationFrame(processVideo);
+                };
+                videoElement.onloadedmetadata = () => {
+                    videoElement.play().then(() => { processVideo(); });
+                };
+            })
+            .catch(error => {
+                alert("صلاحية الكاميرا مطلوبة: " + error.message);
+            });
+        });
+    </script>
+</body>
+</html>
