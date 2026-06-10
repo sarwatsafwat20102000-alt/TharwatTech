@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>بوابة النيون الموحدة الشاملة (وجه + نار + ترقيم أصابع) ⚡🔥</title>
+    <title>نظام رصد وعد الأصابع الذكي الصافي ⚡✋</title>
     
     <script src="https://unpkg.com/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://unpkg.com/@mediapipe/holistic/holistic.js" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 
     <style>
         body, html {
@@ -22,21 +22,21 @@
         #loading-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: #040408; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; color: #ff5500;
-            z-index: 100; text-shadow: 0 0 10px #ff5500; padding: 20px; text-align: center;
+            justify-content: center; align-items: center; color: #00ffcc;
+            z-index: 100; text-shadow: 0 0 10px #00ffcc; padding: 20px; text-align: center;
         }
         .spinner {
-            border: 4px solid rgba(255, 85, 0, 0.1); width: 45px; height: 45px;
-            border-radius: 50%; border-left-color: #ff5500;
+            border: 4px solid rgba(0, 255, 204, 0.1); width: 45px; height: 45px;
+            border-radius: 50%; border-left-color: #00ffcc;
             animation: spin 1s linear infinite; margin-bottom: 20px;
         }
         #start-btn {
-            display: none; background: transparent; color: #ff5500;
-            border: 2px solid #ff5500; padding: 14px 35px; font-size: 18px;
+            display: none; background: transparent; color: #00ffcc;
+            border: 2px solid #00ffcc; padding: 14px 35px; font-size: 18px;
             font-weight: bold; border-radius: 25px; cursor: pointer;
-            box-shadow: 0 0 15px rgba(255, 85, 0, 0.3); transition: all 0.3s;
+            box-shadow: 0 0 15px rgba(0, 255, 204, 0.3); transition: all 0.3s;
         }
-        #start-btn:active { transform: scale(0.95); background: #ff5500; color: #000; }
+        #start-btn:active { transform: scale(0.95); background: #00ffcc; color: #000; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
@@ -46,9 +46,9 @@
         <div id="loading-overlay">
             <div id="status-container">
                 <div class="spinner"></div>
-                <h3 id="loading-text">جاري مزامنة ترقيم الأصابع مع محرك الوجه الشامل...</h3>
+                <h3 id="loading-text">جاري تشغيل محرك الذكاء الاصطناعي لعد الأصابع...</h3>
             </div>
-            <button id="start-btn">إطلاق النظام المتكامل الشامل ⚡🔥</button>
+            <button id="start-btn">ابدأ تشغيل الكاميرا والعد ⚡✋</button>
         </div>
 
         <video id="webcam" autoplay playsinline muted></video>
@@ -71,7 +71,8 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        const HAND_CONNECTIONS = [
+        // روابط الهيكل العظمي لليد
+        const CONNECTIONS = [
             [0,1], [1,2], [2,3], [3,4],       
             [0,5], [5,6], [6,7], [7,8],       
             [5,9], [9,10], [10,11], [11,12],  
@@ -80,288 +81,93 @@
             [5,17] 
         ];
 
-        const FACE_LINES = [
-            [10, 338], [338, 297], [297, 332], [332, 284], [284, 251], [251, 389], [389, 356], [356, 454], [454, 323], [323, 361], [361, 288], [288, 397], [397, 365], [365, 379], [379, 378], [378, 400], [400, 377], [377, 152],
-            [152, 148], [148, 176], [176, 149], [149, 150], [150, 136], [136, 172], [172, 58], [58, 132], [132, 93], [93, 234], [234, 127], [127, 162], [162, 21], [21, 54], [54, 103], [103, 67], [67, 109], [109, 10],
-            [33, 160], [160, 158], [158, 133], [133, 153], [153, 144], [144, 33],
-            [362, 387], [387, 385], [385, 263], [263, 373], [373, 380], [380, 362],
-            [61, 37], [37, 0], [0, 267], [267, 291], [291, 321], [321, 405], [405, 17], [17, 181], [181, 91], [91, 61]
-        ];
-
-        const FINGER_TIPS = [4, 8, 12, 16, 20];
-        let fireParticles = [];
-
-        function getDistance(p1, p2) {
-            return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
-        }
-
-        class FireParticle {
-            constructor(x, y, radiusRange) {
-                this.x = x + (Math.random() - 0.5) * (radiusRange * 0.6);
-                this.y = y + (Math.random() - 0.5) * (radiusRange * 0.6);
-                this.size = Math.random() * 12 + 6;
-                this.speedY = Math.random() * -4 - 2;
-                this.speedX = (Math.random() - 0.5) * 3;
-                this.life = 1.0;
-                this.decay = Math.random() * 0.03 + 0.015;
-                
-                const r = 255;
-                const g = Math.floor(Math.random() * 120);
-                const b = 0;
-                this.color = `rgba(${r}, ${g}, ${b},`;
-            }
-
-            update() {
-                this.x += this.speedX;
-                this.y += this.speedY;
-                this.life -= this.decay;
-                if (this.size > 0.2) this.size -= 0.1;
-            }
-
-            draw() {
-                ctx.save();
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, 2 * Math.PI);
-                ctx.fillStyle = this.color + this.life + ')';
-                ctx.shadowBlur = this.size * 1.5;
-                ctx.shadowColor = 'rgba(255, 68, 0, 0.8)';
-                ctx.fill();
-                ctx.restore();
-            }
-        }
-
-        function createFireball(centerX, centerY, currentRadius) {
-            const intensity = Math.min(20, Math.floor(currentRadius / 15) + 5);
-            for (let i = 0; i < intensity; i++) {
-                fireParticles.push(new FireParticle(centerX, centerY, currentRadius));
-            }
-
-            for (let i = fireParticles.length - 1; i >= 0; i--) {
-                fireParticles[i].update();
-                fireParticles[i].draw();
-                if (fireParticles[i].life <= 0 || fireParticles[i].size <= 0) {
-                    fireParticles.splice(i, 1);
-                }
-            }
-        }
-
-        function drawDigitalGrid(p1, p2, p3, p4) {
+        // دالة مخصصة لرسم رقم نيون فوق طرف كل إصبع مرفوع
+        function drawFingerNumber(x, y, text) {
             ctx.save();
+            // رسم دائرة نيونية خلفية تحت الرقم ليظهر بوضوح سينمائي
             ctx.beginPath();
-            ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y);
-            ctx.closePath(); ctx.clip();
-
-            ctx.fillStyle = 'rgba(255, 85, 0, 0.05)'; ctx.fill();
-            ctx.strokeStyle = 'rgba(255, 85, 0, 0.15)'; ctx.lineWidth = 1.2;
-
-            const minX = Math.min(p1.x, p2.x, p3.x, p4.x), maxX = Math.max(p1.x, p2.x, p3.x, p4.x);
-            const minY = Math.min(p1.y, p2.y, p3.y, p4.y), maxY = Math.max(p1.y, p2.y, p3.y, p4.y);
-            const space = 25;
-
-            for (let x = minX; x < maxX; x += space) { ctx.beginPath(); ctx.moveTo(x, minY); ctx.lineTo(x, maxY); ctx.stroke(); }
-            for (let y = minY; y < maxY; y += space) { ctx.beginPath(); ctx.moveTo(minX, y); ctx.lineTo(maxX, y); ctx.stroke(); }
-            ctx.restore();
-        }
-
-        function drawFingerLabel(x, y, number) {
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(x, y - 25, 15, 0, 2 * Math.PI);
-            ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-            ctx.strokeStyle = "#ff5500";
+            ctx.arc(x, y - 25, 16, 0, 2 * Math.PI);
+            ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+            ctx.strokeStyle = "#00ffcc";
             ctx.lineWidth = 2;
-            ctx.shadowBlur = 8;
-            ctx.shadowColor = "#ff5500";
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = "#00ffcc";
             ctx.fill();
             ctx.stroke();
 
+            // طباعة الرقم داخل الدائرة
             ctx.font = "bold 15px sans-serif";
             ctx.fillStyle = "#ffffff";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText(number, x, y - 25);
+            ctx.fillText(text, x, y - 25);
             ctx.restore();
         }
 
-        // دالة مخصصة لرسم بيانات اليد وترقيم أصابعها المرفوعة
-        function processAndDrawHand(landmarks, isLeftHand) {
-            // 1. رسم عظام اليد ومفاصلها باللون البرتقالي المتوهج
-            HAND_CONNECTIONS.forEach((conn) => {
-                const pt1 = landmarks[conn[0]]; const pt2 = landmarks[conn[1]];
-                ctx.beginPath();
-                ctx.moveTo((1 - pt1.x) * canvasElement.width, pt1.y * canvasElement.height);
-                ctx.lineTo((1 - pt2.x) * canvasElement.width, pt2.y * canvasElement.height);
-                ctx.strokeStyle = '#ff5500'; ctx.lineWidth = 2.5; ctx.shadowBlur = 12; ctx.shadowColor = '#ff5500';
-                ctx.stroke();
-            });
-
-            landmarks.forEach((pt) => {
-                ctx.beginPath(); ctx.arc((1 - pt.x) * canvasElement.width, pt.y * canvasElement.height, 5, 0, 2 * Math.PI);
-                ctx.fillStyle = '#ffffff'; ctx.shadowBlur = 8; ctx.shadowColor = '#ff5500'; ctx.fill();
-            });
-
-            // 2. تتبع وحساب ترقيم الأصابع المرفوعة تلقائياً (تحديث التوافق للمحرك الموحد)
-            let currentFingerIndex = 1;
-
-            // الإبهام (نقطة 4)
-            let thumbOpen = isLeftHand ? (landmarks[4].x > landmarks[2].x) : (landmarks[4].x < landmarks[2].x);
-            if (thumbOpen) {
-                drawFingerLabel((1 - landmarks[4].x) * canvasElement.width, landmarks[4].y * canvasElement.height, currentFingerIndex);
-                currentFingerIndex++;
-            }
-            // السبابة (نقطة 8)
-            if (landmarks[8].y < landmarks[6].y) {
-                drawFingerLabel((1 - landmarks[8].x) * canvasElement.width, landmarks[8].y * canvasElement.height, currentFingerIndex);
-                currentFingerIndex++;
-            }
-            // الوسطى (نقطة 12)
-            if (landmarks[12].y < landmarks[10].y) {
-                drawFingerLabel((1 - landmarks[12].x) * canvasElement.width, landmarks[12].y * canvasElement.height, currentFingerIndex);
-                currentFingerIndex++;
-            }
-            // البنصر (نقطة 16)
-            if (landmarks[16].y < landmarks[14].y) {
-                drawFingerLabel((1 - landmarks[16].x) * canvasElement.width, landmarks[16].y * canvasElement.height, currentFingerIndex);
-                currentFingerIndex++;
-            }
-            // الخنصر (نقطة 20)
-            if (landmarks[20].y < landmarks[18].y) {
-                drawFingerLabel((1 - landmarks[20].x) * canvasElement.width, landmarks[20].y * canvasElement.height, currentFingerIndex);
-                currentFingerIndex++;
-            }
+        // دالة لإظهار لوحة إجمالي عدد الأصابع المرفوعة في زاوية الشاشة
+        function drawTotalCountHUD(totalCount) {
+            ctx.save();
+            ctx.font = "bold 32px sans-serif";
+            ctx.fillStyle = "#ffffff";
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = "#00ffcc";
+            ctx.fillText(`إجمالي الأصابع: ${totalCount}`, 40, 65);
+            ctx.restore();
         }
 
         function onResults(results) {
+            // مسح الشاشة في كل فريم لتحديث الرسوم بسلاسة
             ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            let totalFingersOpen = 0;
 
-            // 🔥 1. رسم شبكة الوجه النيونية (التي تعمل لديك بنجاح)
-            if (results.faceLandmarks) {
-                FACE_LINES.forEach((conn) => {
-                    const pt1 = results.faceLandmarks[conn[0]];
-                    const pt2 = results.faceLandmarks[conn[1]];
-                    if (pt1 && pt2) {
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                
+                // الدوران حول كل يد تم رصدها في الكاميرا
+                results.multiHandLandmarks.forEach((landmarks, handIndex) => {
+                    
+                    // 1. رسم عظام وهيكل اليد بلون نيون سيان
+                    CONNECTIONS.forEach((conn) => {
+                        const pt1 = landmarks[conn[0]]; const pt2 = landmarks[conn[1]];
                         ctx.beginPath();
                         ctx.moveTo((1 - pt1.x) * canvasElement.width, pt1.y * canvasElement.height);
                         ctx.lineTo((1 - pt2.x) * canvasElement.width, pt2.y * canvasElement.height);
-                        ctx.strokeStyle = '#00ff66'; ctx.lineWidth = 1.5; ctx.shadowBlur = 8; ctx.shadowColor = '#00ff66';
+                        ctx.strokeStyle = '#00ffcc'; ctx.lineWidth = 2.5; ctx.shadowBlur = 10; ctx.shadowColor = '#00ffcc';
                         ctx.stroke();
+                    });
+
+                    // رسم نقاط المفاصل
+                    landmarks.forEach((pt) => {
+                        ctx.beginPath(); ctx.arc((1 - pt.x) * canvasElement.width, pt.y * canvasElement.height, 4, 0, 2 * Math.PI);
+                        ctx.fillStyle = '#ffffff'; ctx.fill();
+                    });
+
+                    // 2. حساب وترقيم الأصابع المرفوعة تلقائياً بناءً على مفاصل اليد
+                    let currentHandFingerCount = 1; // عداد ترقيم الأصابع لليد الحالية
+                    const isLeftHand = results.multiHandedness[handIndex].label === 'Left';
+
+                    // --- فحص إصبع الإبهام (النقطة 4) أفقياً ---
+                    let thumbOpen = isLeftHand ? (landmarks[4].x > landmarks[2].x) : (landmarks[4].x < landmarks[2].x);
+                    if (thumbOpen) {
+                        drawFingerNumber((1 - landmarks[4].x) * canvasElement.width, landmarks[4].y * canvasElement.height, currentHandFingerCount);
+                        currentHandFingerCount++;
+                        totalFingersOpen++;
                     }
-                });
-            }
 
-            // 🔥 2. معالجة ورسم وترقيم اليدين من داخل متغبرات المحرك الموحد المدمج (حل المشكلة جذرياً)
-            let allHandsTips = [];
-
-            if (results.leftHandLandmarks) {
-                processAndDrawHand(results.leftHandLandmarks, true);
-                let tips = FINGER_TIPS.map(idx => ({
-                    id: idx, x: (1 - results.leftHandLandmarks[idx].x) * canvasElement.width, y: results.leftHandLandmarks[idx].y * canvasElement.height
-                }));
-                allHandsTips.push(tips);
-            }
-
-            if (results.rightHandLandmarks) {
-                processAndDrawHand(results.rightHandLandmarks, false);
-                let tips = FINGER_TIPS.map(idx => ({
-                    id: idx, x: (1 - results.rightHandLandmarks[idx].x) * canvasElement.width, y: results.rightHandLandmarks[idx].y * canvasElement.height
-                }));
-                allHandsTips.push(tips);
-            }
-
-            // 🔥 3. تشغيل كرات ومستطيلات اللهب التفاعلية
-            if (allHandsTips.length === 2) {
-                const hand1 = allHandsTips[0]; const hand2 = allHandsTips[1];
-                let closestPairs = [];
-                for (let i = 0; i < hand1.length; i++) {
-                    for (let j = 0; j < hand2.length; j++) {
-                        closestPairs.push({ h1Tip: hand1[i], h2Tip: hand2[j], distance: getDistance(hand1[i], hand2[j]) });
+                    // --- فحص باقي الأصابع الأربعة عمودياً ---
+                    // السبابة (نقطة 8)
+                    if (landmarks[8].y < landmarks[6].y) {
+                        drawFingerNumber((1 - landmarks[8].x) * canvasElement.width, landmarks[8].y * canvasElement.height, currentHandFingerCount);
+                        currentHandFingerCount++;
+                        totalFingersOpen++;
                     }
-                }
-                closestPairs.sort((a, b) => a.distance - b.distance);
-                const pair1 = closestPairs[0];
-                let pair2 = null;
-                for (let k = 1; k < closestPairs.length; k++) {
-                    if (closestPairs[k].h1Tip.id !== pair1.h1Tip.id && closestPairs[k].h2Tip.id !== pair1.h2Tip.id) {
-                        pair2 = closestPairs[k]; break;
+                    // الوسطى (نقطة 12)
+                    if (landmarks[12].y < landmarks[10].y) {
+                        drawFingerNumber((1 - landmarks[12].x) * canvasElement.width, landmarks[12].y * canvasElement.height, currentHandFingerCount);
+                        currentHandFingerCount++;
+                        totalFingersOpen++;
                     }
-                }
-
-                if (pair1 && pair2) {
-                    const topLeft = pair1.h1Tip, bottomLeft = pair1.h2Tip;
-                    const bottomRight = pair2.h2Tip, topRight = pair2.h1Tip;
-                    drawDigitalGrid(topLeft, bottomLeft, bottomRight, topRight);
-
-                    ctx.beginPath();
-                    ctx.moveTo(topLeft.x, topLeft.y); ctx.lineTo(bottomLeft.x, bottomLeft.y);
-                    ctx.lineTo(bottomRight.x, bottomRight.y); ctx.lineTo(topRight.x, topRight.y);
-                    ctx.closePath();
-                    ctx.strokeStyle = '#ff3300'; ctx.lineWidth = 4.5; ctx.shadowBlur = 25; ctx.shadowColor = '#ff3300';
-                    ctx.stroke();
-
-                    const fireCenterX = (topLeft.x + bottomLeft.x + bottomRight.x + topRight.x) / 4;
-                    const fireCenterY = (topLeft.y + bottomLeft.y + bottomRight.y + topRight.y) / 4;
-                    createFireball(fireCenterX, fireCenterY, getDistance(topLeft, bottomRight) / 2);
-                }
-            } else if (results.leftHandLandmarks) {
-                const hX = (1 - results.leftHandLandmarks[9].x) * canvasElement.width;
-                const hY = results.leftHandLandmarks[9].y * canvasElement.height;
-                createFireball(hX, hY, 45);
-            } else if (results.rightHandLandmarks) {
-                const hX = (1 - results.rightHandLandmarks[9].x) * canvasElement.width;
-                const hY = results.rightHandLandmarks[9].y * canvasElement.height;
-                createFireball(hX, hY, 45);
-            } else {
-                if (fireParticles.length > 0) {
-                    for (let i = fireParticles.length - 1; i >= 0; i--) {
-                        fireParticles[i].update(); fireParticles[i].draw();
-                        if (fireParticles[i].life <= 0) fireParticles.splice(i, 1);
-                    }
-                }
-            }
-        }
-
-        const holistic = new Holistic({
-            locateFile: (file) => `https://unpkg.com/@mediapipe/holistic/${file}`
-        });
-
-        holistic.setOptions({
-            modelComplexity: 0,
-            smoothLandmarks: true,
-            minDetectionConfidence: 0.5,
-            minTrackingConfidence: 0.5
-        });
-        holistic.onResults(onResults);
-
-        holistic.initialize().then(() => {
-            spinner.style.display = 'none';
-            loadingText.innerText = "اكتمل دمج الأنظمة! عداد الأصابع والوجه جاهز بالكامل.";
-            startBtn.style.display = 'block';
-        });
-
-        startBtn.addEventListener('click', () => {
-            loadingOverlay.style.opacity = '0';
-            setTimeout(() => loadingOverlay.style.display = 'none', 500);
-
-            navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } }, 
-                audio: false 
-            })
-            .then((stream) => {
-                videoElement.srcObject = stream;
-                const processVideo = async () => {
-                    if (!videoElement.paused && !videoElement.ended) {
-                        try { await holistic.send({ image: videoElement }); } catch (e) {}
-                    }
-                    requestAnimationFrame(processVideo);
-                };
-                videoElement.onloadedmetadata = () => {
-                    videoElement.play().then(() => { processVideo(); });
-                };
-            })
-            .catch(error => {
-                alert("صلاحية الكاميرا مطلوبة: " + error.message);
-            });
-        });
-    </script>
-</body>
-</html>
+                    // البنصر (نقطة 16)
+                    if (landmarks[16].y < landmarks[14].y) {
+                        drawFingerNumber((1 - landmarks[16].x) * canvasElement.width, landmarks[16].y * canvasElement.height, currentHandFingerCount);
+                        currentHandFingerCount++;
+                        totalF
