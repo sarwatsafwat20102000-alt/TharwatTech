@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>بوابة اللهب الذكية مع ترقيم الأصابع الديناميكي ⚡🔥</title>
+    <title>بوابة النيون الموحدة الشاملة (وجه + نار + ترقيم أصابع) ⚡🔥</title>
     
     <script src="https://unpkg.com/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://unpkg.com/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/@mediapipe/holistic/holistic.js" crossorigin="anonymous"></script>
 
     <style>
         body, html {
@@ -46,9 +46,9 @@
         <div id="loading-overlay">
             <div id="status-container">
                 <div class="spinner"></div>
-                <h3 id="loading-text">جاري دمج تتبع اليدين ونظام ترقيم الأصابع الفوري...</h3>
+                <h3 id="loading-text">جاري مزامنة ترقيم الأصابع مع محرك الوجه الشامل...</h3>
             </div>
-            <button id="start-btn">إطلاق نظام الترقيم والعد ⚡🔥</button>
+            <button id="start-btn">إطلاق النظام المتكامل الشامل ⚡🔥</button>
         </div>
 
         <video id="webcam" autoplay playsinline muted></video>
@@ -71,13 +71,21 @@
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        const CONNECTIONS = [
+        const HAND_CONNECTIONS = [
             [0,1], [1,2], [2,3], [3,4],       
             [0,5], [5,6], [6,7], [7,8],       
             [5,9], [9,10], [10,11], [11,12],  
             [9,13], [13,14], [14,15], [15,16], 
             [0,17], [17,18], [18,19], [19,20], 
             [5,17] 
+        ];
+
+        const FACE_LINES = [
+            [10, 338], [338, 297], [297, 332], [332, 284], [284, 251], [251, 389], [389, 356], [356, 454], [454, 323], [323, 361], [361, 288], [288, 397], [397, 365], [365, 379], [379, 378], [378, 400], [400, 377], [377, 152],
+            [152, 148], [148, 176], [176, 149], [149, 150], [150, 136], [136, 172], [172, 58], [58, 132], [132, 93], [93, 234], [234, 127], [127, 162], [162, 21], [21, 54], [54, 103], [103, 67], [67, 109], [109, 10],
+            [33, 160], [160, 158], [158, 133], [133, 153], [153, 144], [144, 33],
+            [362, 387], [387, 385], [385, 263], [263, 373], [373, 380], [380, 362],
+            [61, 37], [37, 0], [0, 267], [267, 291], [291, 321], [321, 405], [405, 17], [17, 181], [181, 91], [91, 61]
         ];
 
         const FINGER_TIPS = [4, 8, 12, 16, 20];
@@ -98,7 +106,7 @@
                 this.decay = Math.random() * 0.03 + 0.015;
                 
                 const r = 255;
-                const g = Math.floor(Math.random() * 150);
+                const g = Math.floor(Math.random() * 120);
                 const b = 0;
                 this.color = `rgba(${r}, ${g}, ${b},`;
             }
@@ -155,177 +163,178 @@
             ctx.restore();
         }
 
-        // 🔥 دالة ذكية جديدة لكتابة أرقام الأصابع فوق أطرافها مباشرة بشكل نيون متوهج
         function drawFingerLabel(x, y, number) {
             ctx.save();
-            
-            // رسم دائرة خلفية صغيرة نيون تحت الرقم ليظهر بوضوح
             ctx.beginPath();
-            ctx.arc(x, y - 25, 16, 0, 2 * Math.PI);
-            ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+            ctx.arc(x, y - 25, 15, 0, 2 * Math.PI);
+            ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
             ctx.strokeStyle = "#ff5500";
             ctx.lineWidth = 2;
-            ctx.shadowBlur = 10;
+            ctx.shadowBlur = 8;
             ctx.shadowColor = "#ff5500";
             ctx.fill();
             ctx.stroke();
 
-            // كتابة الرقم داخل الدائرة
-            ctx.font = "bold 16px sans-serif";
+            ctx.font = "bold 15px sans-serif";
             ctx.fillStyle = "#ffffff";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText(number, x, y - 25);
-            
             ctx.restore();
+        }
+
+        // دالة مخصصة لرسم بيانات اليد وترقيم أصابعها المرفوعة
+        function processAndDrawHand(landmarks, isLeftHand) {
+            // 1. رسم عظام اليد ومفاصلها باللون البرتقالي المتوهج
+            HAND_CONNECTIONS.forEach((conn) => {
+                const pt1 = landmarks[conn[0]]; const pt2 = landmarks[conn[1]];
+                ctx.beginPath();
+                ctx.moveTo((1 - pt1.x) * canvasElement.width, pt1.y * canvasElement.height);
+                ctx.lineTo((1 - pt2.x) * canvasElement.width, pt2.y * canvasElement.height);
+                ctx.strokeStyle = '#ff5500'; ctx.lineWidth = 2.5; ctx.shadowBlur = 12; ctx.shadowColor = '#ff5500';
+                ctx.stroke();
+            });
+
+            landmarks.forEach((pt) => {
+                ctx.beginPath(); ctx.arc((1 - pt.x) * canvasElement.width, pt.y * canvasElement.height, 5, 0, 2 * Math.PI);
+                ctx.fillStyle = '#ffffff'; ctx.shadowBlur = 8; ctx.shadowColor = '#ff5500'; ctx.fill();
+            });
+
+            // 2. تتبع وحساب ترقيم الأصابع المرفوعة تلقائياً (تحديث التوافق للمحرك الموحد)
+            let currentFingerIndex = 1;
+
+            // الإبهام (نقطة 4)
+            let thumbOpen = isLeftHand ? (landmarks[4].x > landmarks[2].x) : (landmarks[4].x < landmarks[2].x);
+            if (thumbOpen) {
+                drawFingerLabel((1 - landmarks[4].x) * canvasElement.width, landmarks[4].y * canvasElement.height, currentFingerIndex);
+                currentFingerIndex++;
+            }
+            // السبابة (نقطة 8)
+            if (landmarks[8].y < landmarks[6].y) {
+                drawFingerLabel((1 - landmarks[8].x) * canvasElement.width, landmarks[8].y * canvasElement.height, currentFingerIndex);
+                currentFingerIndex++;
+            }
+            // الوسطى (نقطة 12)
+            if (landmarks[12].y < landmarks[10].y) {
+                drawFingerLabel((1 - landmarks[12].x) * canvasElement.width, landmarks[12].y * canvasElement.height, currentFingerIndex);
+                currentFingerIndex++;
+            }
+            // البنصر (نقطة 16)
+            if (landmarks[16].y < landmarks[14].y) {
+                drawFingerLabel((1 - landmarks[16].x) * canvasElement.width, landmarks[16].y * canvasElement.height, currentFingerIndex);
+                currentFingerIndex++;
+            }
+            // الخنصر (نقطة 20)
+            if (landmarks[20].y < landmarks[18].y) {
+                drawFingerLabel((1 - landmarks[20].x) * canvasElement.width, landmarks[20].y * canvasElement.height, currentFingerIndex);
+                currentFingerIndex++;
+            }
         }
 
         function onResults(results) {
             ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-                let allHandsTips = [];
-
-                results.multiHandLandmarks.forEach((landmarks, handIndex) => {
-                    
-                    // رسم هيكل اليد والمفاصل
-                    CONNECTIONS.forEach((conn) => {
-                        const pt1 = landmarks[conn[0]]; const pt2 = landmarks[conn[1]];
+            // 🔥 1. رسم شبكة الوجه النيونية (التي تعمل لديك بنجاح)
+            if (results.faceLandmarks) {
+                FACE_LINES.forEach((conn) => {
+                    const pt1 = results.faceLandmarks[conn[0]];
+                    const pt2 = results.faceLandmarks[conn[1]];
+                    if (pt1 && pt2) {
                         ctx.beginPath();
                         ctx.moveTo((1 - pt1.x) * canvasElement.width, pt1.y * canvasElement.height);
                         ctx.lineTo((1 - pt2.x) * canvasElement.width, pt2.y * canvasElement.height);
-                        ctx.strokeStyle = '#ff5500'; ctx.lineWidth = 2.5; ctx.shadowBlur = 12; ctx.shadowColor = '#ff5500';
+                        ctx.strokeStyle = '#00ff66'; ctx.lineWidth = 1.5; ctx.shadowBlur = 8; ctx.shadowColor = '#00ff66';
                         ctx.stroke();
-                    });
-
-                    landmarks.forEach((pt) => {
-                        ctx.beginPath(); ctx.arc((1 - pt.x) * canvasElement.width, pt.y * canvasElement.height, 5, 0, 2 * Math.PI);
-                        ctx.fillStyle = '#ffffff'; ctx.shadowBlur = 8; ctx.shadowColor = '#ff5500'; ctx.fill();
-                    });
-
-                    // --- 🧠 منطق فحص وترقيم كل إصبع مرفوع ديناميكياً ---
-                    const isLeftHand = results.multiHandedness[handIndex].label === 'Left';
-                    let currentFingerIndex = 1; // عداد داخلي لتسلسل أرقام الأصابع من 1 إلى 5
-
-                    // 1. فحص الإبهام وترقيمه (نقطة 4)
-                    let thumbOpen = isLeftHand ? (landmarks[4].x > landmarks[2].x) : (landmarks[4].x < landmarks[2].x);
-                    if (thumbOpen) {
-                        drawFingerLabel((1 - landmarks[4].x) * canvasElement.width, landmarks[4].y * canvasElement.height, currentFingerIndex);
-                        currentFingerIndex++;
                     }
-
-                    // 2. فحص وترقيم السبابة (نقطة 8)
-                    if (landmarks[8].y < landmarks[6].y) {
-                        drawFingerLabel((1 - landmarks[8].x) * canvasElement.width, landmarks[8].y * canvasElement.height, currentFingerIndex);
-                        currentFingerIndex++;
-                    }
-
-                    // 3. فحص وترقيم الوسطى (نقطة 12)
-                    if (landmarks[12].y < landmarks[10].y) {
-                        drawFingerLabel((1 - landmarks[12].x) * canvasElement.width, landmarks[12].y * canvasElement.height, currentFingerIndex);
-                        currentFingerIndex++;
-                    }
-
-                    // 4. فحص وترقيم البنصر (نقطة 16)
-                    if (landmarks[16].y < landmarks[14].y) {
-                        drawFingerLabel((1 - landmarks[16].x) * canvasElement.width, landmarks[16].y * canvasElement.height, currentFingerIndex);
-                        currentFingerIndex++;
-                    }
-
-                    // 5. فحص وترقيم الخنصر (نقطة 20)
-                    if (landmarks[20].y < landmarks[18].y) {
-                        drawFingerLabel((1 - landmarks[20].x) * canvasElement.width, landmarks[20].y * canvasElement.height, currentFingerIndex);
-                        currentFingerIndex++;
-                    }
-                    // ----------------------------------------------------
-
-                    let tips = FINGER_TIPS.map(index => {
-                        return {
-                            id: index,
-                            x: (1 - landmarks[index].x) * canvasElement.width,
-                            y: landmarks[index].y * canvasElement.height
-                        };
-                    });
-                    allHandsTips.push(tips);
                 });
+            }
 
-                // تفعيل مستطيل الأركان وكرة النار عند رصد يدين اثنين
-                if (allHandsTips.length === 2) {
-                    const hand1 = allHandsTips[0]; const hand2 = allHandsTips[1];
-                    let closestPairs = [];
+            // 🔥 2. معالجة ورسم وترقيم اليدين من داخل متغبرات المحرك الموحد المدمج (حل المشكلة جذرياً)
+            let allHandsTips = [];
 
-                    for (let i = 0; i < hand1.length; i++) {
-                        for (let j = 0; j < hand2.length; j++) {
-                            let dist = getDistance(hand1[i], hand2[j]);
-                            closestPairs.push({ h1Tip: hand1[i], h2Tip: hand2[j], distance: dist });
-                        }
+            if (results.leftHandLandmarks) {
+                processAndDrawHand(results.leftHandLandmarks, true);
+                let tips = FINGER_TIPS.map(idx => ({
+                    id: idx, x: (1 - results.leftHandLandmarks[idx].x) * canvasElement.width, y: results.leftHandLandmarks[idx].y * canvasElement.height
+                }));
+                allHandsTips.push(tips);
+            }
+
+            if (results.rightHandLandmarks) {
+                processAndDrawHand(results.rightHandLandmarks, false);
+                let tips = FINGER_TIPS.map(idx => ({
+                    id: idx, x: (1 - results.rightHandLandmarks[idx].x) * canvasElement.width, y: results.rightHandLandmarks[idx].y * canvasElement.height
+                }));
+                allHandsTips.push(tips);
+            }
+
+            // 🔥 3. تشغيل كرات ومستطيلات اللهب التفاعلية
+            if (allHandsTips.length === 2) {
+                const hand1 = allHandsTips[0]; const hand2 = allHandsTips[1];
+                let closestPairs = [];
+                for (let i = 0; i < hand1.length; i++) {
+                    for (let j = 0; j < hand2.length; j++) {
+                        closestPairs.push({ h1Tip: hand1[i], h2Tip: hand2[j], distance: getDistance(hand1[i], hand2[j]) });
                     }
-
-                    closestPairs.sort((a, b) => a.distance - b.distance);
-                    const pair1 = closestPairs[0]; 
-                    
-                    let pair2 = null;
-                    for (let k = 1; k < closestPairs.length; k++) {
-                        if (closestPairs[k].h1Tip.id !== pair1.h1Tip.id && closestPairs[k].h2Tip.id !== pair1.h2Tip.id) {
-                            pair2 = closestPairs[k];
-                            break;
-                        }
-                    }
-
-                    if (pair1 && pair2) {
-                        const topLeft = pair1.h1Tip, bottomLeft = pair1.h2Tip;
-                        const bottomRight = pair2.h2Tip, topRight = pair2.h1Tip;
-
-                        drawDigitalGrid(topLeft, bottomLeft, bottomRight, topRight);
-
-                        ctx.beginPath();
-                        ctx.moveTo(topLeft.x, topLeft.y); ctx.lineTo(bottomLeft.x, bottomLeft.y);
-                        ctx.lineTo(bottomRight.x, bottomRight.y); ctx.lineTo(topRight.x, topRight.y);
-                        ctx.closePath();
-
-                        ctx.strokeStyle = '#ff3300'; ctx.lineWidth = 4.5; ctx.shadowBlur = 25; ctx.shadowColor = '#ff3300';
-                        ctx.stroke();
-
-                        const fireCenterX = (topLeft.x + bottomLeft.x + bottomRight.x + topRight.x) / 4;
-                        const fireCenterY = (topLeft.y + bottomLeft.y + bottomRight.y + topRight.y) / 4;
-                        const currentRadius = getDistance(topLeft, bottomRight) / 2;
-
-                        createFireball(fireCenterX, fireCenterY, currentRadius);
-                    }
-                } else if (allHandsTips.length === 1) {
-                    // إذا ظهرت يد واحدة تخرج النار من منتصف كف اليد
-                    const singleHand = results.multiHandLandmarks[0];
-                    const hX = (1 - singleHand[9].x) * canvasElement.width;
-                    const hY = singleHand[9].y * canvasElement.height;
-                    createFireball(hX, hY, 40);
                 }
+                closestPairs.sort((a, b) => a.distance - b.distance);
+                const pair1 = closestPairs[0];
+                let pair2 = null;
+                for (let k = 1; k < closestPairs.length; k++) {
+                    if (closestPairs[k].h1Tip.id !== pair1.h1Tip.id && closestPairs[k].h2Tip.id !== pair1.h2Tip.id) {
+                        pair2 = closestPairs[k]; break;
+                    }
+                }
+
+                if (pair1 && pair2) {
+                    const topLeft = pair1.h1Tip, bottomLeft = pair1.h2Tip;
+                    const bottomRight = pair2.h2Tip, topRight = pair2.h1Tip;
+                    drawDigitalGrid(topLeft, bottomLeft, bottomRight, topRight);
+
+                    ctx.beginPath();
+                    ctx.moveTo(topLeft.x, topLeft.y); ctx.lineTo(bottomLeft.x, bottomLeft.y);
+                    ctx.lineTo(bottomRight.x, bottomRight.y); ctx.lineTo(topRight.x, topRight.y);
+                    ctx.closePath();
+                    ctx.strokeStyle = '#ff3300'; ctx.lineWidth = 4.5; ctx.shadowBlur = 25; ctx.shadowColor = '#ff3300';
+                    ctx.stroke();
+
+                    const fireCenterX = (topLeft.x + bottomLeft.x + bottomRight.x + topRight.x) / 4;
+                    const fireCenterY = (topLeft.y + bottomLeft.y + bottomRight.y + topRight.y) / 4;
+                    createFireball(fireCenterX, fireCenterY, getDistance(topLeft, bottomRight) / 2);
+                }
+            } else if (results.leftHandLandmarks) {
+                const hX = (1 - results.leftHandLandmarks[9].x) * canvasElement.width;
+                const hY = results.leftHandLandmarks[9].y * canvasElement.height;
+                createFireball(hX, hY, 45);
+            } else if (results.rightHandLandmarks) {
+                const hX = (1 - results.rightHandLandmarks[9].x) * canvasElement.width;
+                const hY = results.rightHandLandmarks[9].y * canvasElement.height;
+                createFireball(hX, hY, 45);
             } else {
                 if (fireParticles.length > 0) {
-                    ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
                     for (let i = fireParticles.length - 1; i >= 0; i--) {
-                        fireParticles[i].update();
-                        fireParticles[i].draw();
+                        fireParticles[i].update(); fireParticles[i].draw();
                         if (fireParticles[i].life <= 0) fireParticles.splice(i, 1);
                     }
                 }
             }
         }
 
-        const hands = new Hands({
-            locateFile: (file) => `https://unpkg.com/@mediapipe/hands/${file}`
+        const holistic = new Holistic({
+            locateFile: (file) => `https://unpkg.com/@mediapipe/holistic/${file}`
         });
 
-        hands.setOptions({
-            maxNumHands: 2,
-            modelComplexity: 0, 
-            minDetectionConfidence: 0.5, 
+        holistic.setOptions({
+            modelComplexity: 0,
+            smoothLandmarks: true,
+            minDetectionConfidence: 0.5,
             minTrackingConfidence: 0.5
         });
-        hands.onResults(onResults);
+        holistic.onResults(onResults);
 
-        hands.initialize().then(() => {
+        holistic.initialize().then(() => {
             spinner.style.display = 'none';
-            loadingText.innerText = "اكتمل بناء مصفوفة الترقيم التلقائي!";
+            loadingText.innerText = "اكتمل دمج الأنظمة! عداد الأصابع والوجه جاهز بالكامل.";
             startBtn.style.display = 'block';
         });
 
@@ -339,14 +348,12 @@
             })
             .then((stream) => {
                 videoElement.srcObject = stream;
-                
                 const processVideo = async () => {
                     if (!videoElement.paused && !videoElement.ended) {
-                        try { await hands.send({ image: videoElement }); } catch (e) {}
+                        try { await holistic.send({ image: videoElement }); } catch (e) {}
                     }
                     requestAnimationFrame(processVideo);
                 };
-
                 videoElement.onloadedmetadata = () => {
                     videoElement.play().then(() => { processVideo(); });
                 };
